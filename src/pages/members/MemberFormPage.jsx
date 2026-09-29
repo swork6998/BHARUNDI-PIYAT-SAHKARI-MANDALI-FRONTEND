@@ -230,6 +230,9 @@ const MemberFormPage = () => {
             onChange={(e, val) => setActiveTab(val)}
             textColor="primary"
             indicatorColor="primary"
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
           >
             <Tab label="૧. સામાન્ય & સભ્યપદ વિગત" sx={{ fontWeight: 600 }} />
             <Tab label="૨. જમીન અને બ્લોક વિગત" sx={{ fontWeight: 600 }} />

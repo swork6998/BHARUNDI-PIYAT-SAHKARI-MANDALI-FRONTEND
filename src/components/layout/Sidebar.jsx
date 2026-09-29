@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-  Collapse, Typography, Box, Divider, Toolbar
+  Collapse, Typography, Box, Divider, Toolbar, useTheme, useMediaQuery
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -30,7 +30,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 const DRAWER_WIDTH = 280;
 
-export default function Sidebar({ open, onClose }) {
+export default function Sidebar({ open, onClose, isMobile: propIsMobile }) {
+  const theme = useTheme();
+  const mediaIsMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = propIsMobile !== undefined ? propIsMobile : mediaIsMobile;
+
   const navigate = useLocation();
   const routerNavigate = useNavigate();
   const currentPath = navigate.pathname;
@@ -52,18 +56,23 @@ export default function Sidebar({ open, onClose }) {
 
   const handleNav = (path) => {
     routerNavigate(path);
-    if (window.innerWidth < 900 && onClose) {
+    if (isMobile && onClose) {
       onClose();
     }
   };
 
   return (
     <Drawer
-      variant="persistent"
+      variant={isMobile ? 'temporary' : 'persistent'}
       open={open}
+      onClose={onClose}
+      ModalProps={{
+        keepMounted: true // Better performance on mobile devices
+      }}
       sx={{
-        width: DRAWER_WIDTH,
+        width: isMobile ? 'auto' : (open ? DRAWER_WIDTH : 0),
         flexShrink: 0,
+        zIndex: (theme) => isMobile ? theme.zIndex.drawer + 2 : theme.zIndex.drawer,
         '& .MuiDrawer-paper': {
           width: DRAWER_WIDTH,
           boxSizing: 'border-box',

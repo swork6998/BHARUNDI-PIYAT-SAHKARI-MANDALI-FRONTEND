@@ -7,6 +7,7 @@ import {
   CardContent,
   Button,
   Table,
+  TableContainer,
   TableBody,
   TableCell,
   TableHead,
@@ -146,46 +147,48 @@ const Dashboard = () => {
                 </Button>
               </Box>
 
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>સભાસદ</TableCell>
-                    <TableCell>પાક</TableCell>
-                    <TableCell align="right">વિસ્તાર (વીઘા)</TableCell>
-                    <TableCell align="right">રકમ (₹)</TableCell>
-                    <TableCell align="center">સ્થિતિ</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {piyatEntries.slice(0, 5).map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell sx={{ fontWeight: 600 }}>
-                        {p.member_name_guj || p.memberName || `સભાસદ નં. ${p.member_code || p.member_id}`}
-                      </TableCell>
-                      <TableCell>{p.crop_name_guj || p.cropName || 'શેરડી'}</TableCell>
-                      <TableCell align="right">{p.area_vigha ?? p.area ?? 1}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, color: '#00695C' }}>
-                        ₹ {p.total_amount ?? p.totalAmount ?? 0}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          label={p.status || 'મંજૂર'}
-                          size="small"
-                          color={p.status === 'મંજૂર' ? 'success' : 'default'}
-                          sx={{ fontSize: '0.75rem', fontWeight: 600 }}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {piyatEntries.length === 0 && (
+              <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
+                <Table size="small">
+                  <TableHead>
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                        આ વર્ષ માટે કોઈ પિયત એન્ટ્રી મળી નથી.
-                      </TableCell>
+                      <TableCell>સભાસદ</TableCell>
+                      <TableCell>પાક</TableCell>
+                      <TableCell align="right">વિસ્તાર (વીઘા)</TableCell>
+                      <TableCell align="right">રકમ (₹)</TableCell>
+                      <TableCell align="center">સ્થિતિ</TableCell>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {piyatEntries.slice(0, 5).map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell sx={{ fontWeight: 600 }}>
+                          {p.member_name_guj || p.memberName || `સભાસદ નં. ${p.member_code || p.member_id}`}
+                        </TableCell>
+                        <TableCell>{p.crop_name_guj || p.cropName || 'શેરડી'}</TableCell>
+                        <TableCell align="right">{p.area_vigha ?? p.area ?? 1}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, color: '#00695C' }}>
+                          ₹ {p.total_amount ?? p.totalAmount ?? 0}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Chip
+                            label={p.status || 'મંજૂર'}
+                            size="small"
+                            color={p.status === 'મંજૂર' ? 'success' : 'default'}
+                            sx={{ fontSize: '0.75rem', fontWeight: 600 }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {piyatEntries.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                          આ વર્ષ માટે કોઈ પિયત એન્ટ્રી મળી નથી.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </CardContent>
           </Card>
         </Grid>
@@ -203,37 +206,39 @@ const Dashboard = () => {
                 </Button>
               </Box>
 
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>રસીદ નં</TableCell>
-                    <TableCell>સભાસદ</TableCell>
-                    <TableCell align="right">રકમ (₹)</TableCell>
-                    <TableCell>તારીખ</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {receipts.slice(0, 5).map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell sx={{ fontWeight: 600 }}>{r.receipt_no || r.receiptNo}</TableCell>
-                      <TableCell>{r.member_name || r.memberName}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, color: '#2E7D32' }}>
-                        ₹ {Number(r.amount).toLocaleString('gu-IN')}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '0.82rem', color: '#64748b' }}>
-                        {formatDate(r.date)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {receipts.length === 0 && (
+              <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
+                <Table size="small">
+                  <TableHead>
                     <TableRow>
-                      <TableCell colSpan={4} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                        આ વર્ષ માટે કોઈ રોકડ રસીદ મળી નથી.
-                      </TableCell>
+                      <TableCell>રસીદ નં</TableCell>
+                      <TableCell>સભાસદ</TableCell>
+                      <TableCell align="right">રકમ (₹)</TableCell>
+                      <TableCell>તારીખ</TableCell>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {receipts.slice(0, 5).map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell sx={{ fontWeight: 600 }}>{r.receipt_no || r.receiptNo}</TableCell>
+                        <TableCell>{r.member_name || r.memberName}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, color: '#2E7D32' }}>
+                          ₹ {Number(r.amount).toLocaleString('gu-IN')}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '0.82rem', color: '#64748b' }}>
+                          {formatDate(r.date)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {receipts.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                          આ વર્ષ માટે કોઈ રોકડ રસીદ મળી નથી.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </CardContent>
           </Card>
         </Grid>

@@ -3,6 +3,7 @@ import {
   Card,
   CardContent,
   Table,
+  TableContainer,
   TableBody,
   TableCell,
   TableHead,
@@ -227,55 +228,57 @@ const ShareLedgerPage = () => {
         </Box>
 
         <CardContent sx={{ p: 0 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>તારીખ</TableCell>
-                <TableCell>પ્રમાણપત્ર નં</TableCell>
-                <TableCell>શેર નં. થી</TableCell>
-                <TableCell>શેર નં. સુધી</TableCell>
-                <TableCell align="right">શેર સંખ્યા</TableCell>
-                <TableCell align="right">શેર દીઠ દર (₹)</TableCell>
-                <TableCell align="right">શેર મૂડી રકમ (₹)</TableCell>
-                <TableCell>ઠરાવ નંબર/તારીખ</TableCell>
-                <TableCell align="center">સ્થિતિ</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
+          <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                    <CircularProgress size={28} />
-                    <Typography variant="body2" sx={{ mt: 1, color: '#64748b' }}>
-                      શેર ખાતાવહી ડેટા લોડ થઈ રહ્યો છે...
-                    </Typography>
-                  </TableCell>
+                  <TableCell>તારીખ</TableCell>
+                  <TableCell>પ્રમાણપત્ર નં</TableCell>
+                  <TableCell>શેર નં. થી</TableCell>
+                  <TableCell>શેર નં. સુધી</TableCell>
+                  <TableCell align="right">શેર સંખ્યા</TableCell>
+                  <TableCell align="right">શેર દીઠ દર (₹)</TableCell>
+                  <TableCell align="right">શેર મૂડી રકમ (₹)</TableCell>
+                  <TableCell>ઠરાવ નંબર/તારીખ</TableCell>
+                  <TableCell align="center">સ્થિતિ</TableCell>
                 </TableRow>
-              ) : displayShares.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 3, color: '#64748b' }}>
-                    આ સભાસદના કોઈ શેર રેકોર્ડ ઉપલબ્ધ નથી.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pagedShares.map((sh) => (
-                  <TableRow key={sh.id}>
-                    <TableCell>{formatDate(sh.issueDate || sh.issue_date)}</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: '#00695C' }}>{sh.certiNo || sh.certi_no || '-'}</TableCell>
-                    <TableCell>{sh.fromNo || sh.from_no || '-'}</TableCell>
-                    <TableCell>{sh.toNo || sh.to_no || '-'}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700 }}>{sh.count || sh.shareCount || sh.share_count || 1}</TableCell>
-                    <TableCell align="right">₹ {Number(sh.faceValue || sh.face_value || 100).toFixed(2)}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 800, color: '#00695C' }}>
-                      ₹ {Number(sh.amount || sh.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                      <CircularProgress size={28} />
+                      <Typography variant="body2" sx={{ mt: 1, color: '#64748b' }}>
+                        શેર ખાતાવહી ડેટા લોડ થઈ રહ્યો છે...
+                      </Typography>
                     </TableCell>
-                    <TableCell>{sh.tharavDate ? formatDate(sh.tharavDate) : (sh.tharav_date ? formatDate(sh.tharav_date) : (sh.tharav_no || '-'))}</TableCell>
-                    <TableCell align="center">{sh.status || 'ચાલુ'}</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : displayShares.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} align="center" sx={{ py: 3, color: '#64748b' }}>
+                      આ સભાસદના કોઈ શેર રેકોર્ડ ઉપલબ્ધ નથી.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  pagedShares.map((sh) => (
+                    <TableRow key={sh.id}>
+                      <TableCell>{formatDate(sh.issueDate || sh.issue_date)}</TableCell>
+                      <TableCell sx={{ fontWeight: 700, color: '#00695C' }}>{sh.certiNo || sh.certi_no || '-'}</TableCell>
+                      <TableCell>{sh.fromNo || sh.from_no || '-'}</TableCell>
+                      <TableCell>{sh.toNo || sh.to_no || '-'}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>{sh.count || sh.shareCount || sh.share_count || 1}</TableCell>
+                      <TableCell align="right">₹ {Number(sh.faceValue || sh.face_value || 100).toFixed(2)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 800, color: '#00695C' }}>
+                        ₹ {Number(sh.amount || sh.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell>{sh.tharavDate ? formatDate(sh.tharavDate) : (sh.tharav_date ? formatDate(sh.tharav_date) : (sh.tharav_no || '-'))}</TableCell>
+                      <TableCell align="center">{sh.status || 'ચાલુ'}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </CardContent>
 
         <TablePagination

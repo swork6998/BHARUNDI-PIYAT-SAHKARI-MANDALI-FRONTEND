@@ -16,17 +16,17 @@ const StatCard = ({ title, value, icon, color = '#00695C', subtitle, trend }) =>
         },
       }}
     >
-      <CardContent sx={{ p: 2.5 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Box>
-            <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600, fontSize: '0.88rem', mb: 0.5 }}>
+      <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.88rem' }, mb: 0.5 }}>
               {title}
             </Typography>
-            <Typography variant="h4" sx={{ fontWeight: 800, color: '#1e293b', fontSize: '1.75rem', mb: 0.5 }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: '#1e293b', fontSize: { xs: '1.35rem', sm: '1.75rem' }, mb: 0.5, wordBreak: 'break-word' }}>
               {value}
             </Typography>
             {subtitle && (
-              <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.78rem' }}>
+              <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>
                 {subtitle}
               </Typography>
             )}
@@ -42,11 +42,12 @@ const StatCard = ({ title, value, icon, color = '#00695C', subtitle, trend }) =>
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 52,
-              height: 52,
-              borderRadius: 3,
+              width: { xs: 44, sm: 52 },
+              height: { xs: 44, sm: 52 },
+              borderRadius: 2.5,
               bgcolor: `${color}15`,
               color: color,
+              flexShrink: 0
             }}
           >
             {icon}

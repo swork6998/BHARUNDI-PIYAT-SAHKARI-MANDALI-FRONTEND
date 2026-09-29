@@ -50,6 +50,11 @@
   font-family: var(--font-family-gujarati) !important;
 }
 
+html, body, #root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 body {
   background-color: #f7faf7;
   color: #1a2e1a;
@@ -81,6 +86,106 @@ body {
 @media screen {
   .print-only {
     display: none !important;
+  }
+
+  /* All table containers and card contents with tables scroll horizontally smoothly */
+  .MuiTableContainer-root,
+  .MuiCardContent-root:has(.MuiTable-root) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  /* Tables maintain readable width without truncating columns */
+  .MuiTable-root {
+    min-width: 580px;
+  }
+}
+
+/* Mobile & Tablet Responsive Optimizations */
+@media screen and (max-width: 900px) {
+  html, body, #root {
+    overflow-x: hidden;
+  }
+
+  .MuiContainer-root {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  /* Dialogs fit screen margins without clipping */
+  .MuiDialog-paper {
+    margin: 12px !important;
+    width: calc(100% - 24px) !important;
+    max-width: calc(100% - 24px) !important;
+  }
+
+  .MuiDialogTitle-root {
+    padding: 14px 16px !important;
+    font-size: 1.1rem !important;
+  }
+
+  .MuiDialogContent-root {
+    padding: 12px 16px !important;
+  }
+
+  .MuiDialogActions-root {
+    padding: 10px 16px !important;
+    flex-wrap: wrap !important;
+    gap: 8px;
+  }
+
+  .MuiDialogActions-root > button {
+    flex: 1 1 auto;
+  }
+
+  /* Compact Table Cells on Mobile */
+  .MuiTableCell-root {
+    padding: 8px 10px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .MuiTableCell-head {
+    padding: 10px 10px !important;
+    font-size: 0.85rem !important;
+    white-space: nowrap !important;
+  }
+
+  /* Responsive Pagination controls */
+  .MuiTablePagination-toolbar {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 8px !important;
+  }
+
+  .MuiTablePagination-spacer {
+    display: none !important;
+  }
+
+  .MuiTablePagination-selectLabel,
+  .MuiTablePagination-displayedRows {
+    font-size: 0.8rem !important;
+    margin: 0 4px !important;
+  }
+
+  /* Prevent fixed min-widths from exceeding container */
+  .MuiFormControl-root,
+  .MuiTextField-root {
+    max-width: 100% !important;
+  }
+
+  /* Mobile Tabs */
+  .MuiTabs-root {
+    min-height: 44px !important;
+  }
+
+  .MuiTab-root {
+    min-height: 44px !important;
+    padding: 6px 12px !important;
+    font-size: 0.82rem !important;
   }
 }
 

@@ -88,14 +88,14 @@ export default function LoginPage({ onLoginSuccess }) {
             sx={{
               bgcolor: 'primary.main',
               color: 'primary.contrastText',
-              p: 3,
+              p: { xs: 2.25, sm: 3 },
               textAlign: 'center'
             }}
           >
             <Box
               sx={{
-                width: 64,
-                height: 64,
+                width: { xs: 52, sm: 64 },
+                height: { xs: 52, sm: 64 },
                 borderRadius: '50%',
                 bgcolor: 'white',
                 color: 'primary.main',
@@ -107,17 +107,17 @@ export default function LoginPage({ onLoginSuccess }) {
                 boxShadow: 2
               }}
             >
-              <WaterDropIcon sx={{ fontSize: 36, color: '#1e7040' }} />
+              <WaterDropIcon sx={{ fontSize: { xs: 28, sm: 36 }, color: '#1e7040' }} />
             </Box>
-            <Typography variant="h6" fontWeight="bold">
+            <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
               {societyInfo.name}
             </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.9 }}>
+            <Typography variant="caption" sx={{ opacity: 0.9, fontSize: { xs: '0.72rem', sm: '0.75rem' } }}>
               {societyInfo.sub_title}
             </Typography>
           </Box>
 
-          <CardContent sx={{ p: 4 }}>
+          <CardContent sx={{ p: { xs: 2.5, sm: 4 } }}>
             <Typography variant="subtitle1" fontWeight="bold" textAlign="center" sx={{ mb: 2 }}>
               સહકારી પિયત સોફ્ટવેરમાં આપનું સ્વાગત છે
             </Typography>

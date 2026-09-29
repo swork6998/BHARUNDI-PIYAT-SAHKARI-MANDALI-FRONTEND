@@ -313,7 +313,13 @@ const PiyatReportsPage = () => {
 
       <Card sx={{ mb: 3 }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: '#f8fafc' }} className="no-print">
-          <Tabs value={activeTab} onChange={(e, val) => { setActiveTab(val); setPage(0); }}>
+          <Tabs
+            value={activeTab}
+            onChange={(e, val) => { setActiveTab(val); setPage(0); }}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+          >
             <Tab label="૧. પાક વાર પિયત સારાંશ" sx={{ fontWeight: 600 }} />
             <Tab label="૨. ગામ વાર પિયત સારાંશ" sx={{ fontWeight: 600 }} />
             <Tab label="૩. બાકી પિયત વસૂલાત યાદી" sx={{ fontWeight: 600 }} />

@@ -90,10 +90,53 @@ const theme = createTheme({
     },
     MuiTableCell: {
       styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            padding: '8px 10px',
+            fontSize: '0.82rem'
+          }
+        },
         head: {
           fontWeight: 700,
           color: '#1b5e20',
-          backgroundColor: '#eef7ef'
+          backgroundColor: '#eef7ef',
+          '@media (max-width: 600px)': {
+            padding: '10px 10px',
+            fontSize: '0.85rem',
+            whiteSpace: 'nowrap'
+          }
+        }
+      }
+    },
+    MuiTableContainer: {
+      styleOverrides: {
+        root: {
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          maxWidth: '100%'
+        }
+      }
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          '@media (max-width: 600px)': {
+            margin: '12px',
+            width: 'calc(100% - 24px) !important',
+            maxWidth: 'calc(100% - 24px) !important'
+          }
+        }
+      }
+    },
+    MuiContainer: {
+      styleOverrides: {
+        root: {
+          paddingLeft: '12px',
+          paddingRight: '12px',
+          '@media (min-width: 600px)': {
+            paddingLeft: '24px',
+            paddingRight: '24px'
+          }
         }
       }
     }
