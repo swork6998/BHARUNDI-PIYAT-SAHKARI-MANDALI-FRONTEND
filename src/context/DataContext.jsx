@@ -795,6 +795,22 @@ export function DataProvider({ children }) {
     return await res.json();
   };
 
+  const setCurrentFinancialYear = async (id) => {
+    const res = await fetch(`${API_BASE}/masters/years/${id}/set-current`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return await res.json();
+  };
+
+  const toggleLockFinancialYear = async (id) => {
+    const res = await fetch(`${API_BASE}/masters/years/${id}/toggle-lock`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return await res.json();
+  };
+
   // ૬. સભાસદ માસ્ટર
   const addMember = async (item) => {
     const payload = {
@@ -1134,6 +1150,8 @@ export function DataProvider({ children }) {
         addFinancialYear,
         updateFinancialYear,
         deleteFinancialYear,
+        setCurrentFinancialYear,
+        toggleLockFinancialYear,
         villages,
         addVillage,
         updateVillage,

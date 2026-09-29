@@ -5,6 +5,18 @@
  * - DateTime:  DD-MM-YYYY HH:MM:SS
  */
 
+export function toEnglishDigits(str) {
+  if (!str) return '';
+  const guj = {'૦':'0', '૧':'1', '૨':'2', '૩':'3', '૪':'4', '૫':'5', '૬':'6', '૭':'7', '૮':'8', '૯':'9'};
+  return String(str).replace(/[૦-૯]/g, d => guj[d] !== undefined ? guj[d] : d);
+}
+
+export function toGujaratiDigits(str) {
+  if (!str) return '';
+  const guj = ['૦', '૧', '૨', '૩', '૪', '૫', '૬', '૭', '૮', '૯'];
+  return String(str).replace(/[0-9]/g, d => guj[parseInt(d, 10)]);
+}
+
 /**
  * Formats any date into DD-MM-YYYY
  * @param {string|Date|number} val - Date value to format

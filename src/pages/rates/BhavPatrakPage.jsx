@@ -21,7 +21,8 @@ import {
   Paper,
   InputAdornment,
   TablePagination,
-  CircularProgress
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -30,6 +31,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import PrintIcon from '@mui/icons-material/Print';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import LockIcon from '@mui/icons-material/Lock';
 import PageHeader from '../../components/common/PageHeader';
 import PrintSignatures from '../../components/common/PrintSignatures';
 import ConfirmModal from '../../components/common/ConfirmModal';
@@ -38,7 +40,7 @@ import { useApp } from '../../context/AppContext';
 
 const BhavPatrakPage = () => {
   const { seasons, fetchBhavPatrak, fetchSeasons, updateBhavPatrak, deleteBhavPatrak } = useData();
-  const { activeYear, activeSeason, showToast, showNotification, isYearLocked, yearsList, checkCanModify } = useApp();
+  const { activeYear, activeSeason, showToast, showNotification, isYearLocked, isRecordLocked, yearsList, checkCanModify } = useApp();
   const notify = showToast || showNotification;
 
   const [selectedYear, setSelectedYear] = useState(activeYear);
@@ -94,15 +96,21 @@ const BhavPatrakPage = () => {
     percentage: 10,
   });
 
+  const isEffectiveYearLocked = Boolean(isRecordLocked ? isRecordLocked(selectedYear || activeYear) : isYearLocked);
+
   const handleRateChange = (id, field, value) => {
-    if (isYearLocked) return;
+    if (isEffectiveYearLocked) return;
     setRatesList((prev) =>
       prev.map((r) => (r.id === id ? { ...r, [field]: Number(value) } : r))
     );
   };
 
   const handleSaveRow = async (row) => {
-    if (!checkCanModify('ભાવ દર સાચવો')) return;
+    if (isEffectiveYearLocked) {
+      notify(`નાણાકીય વર્ષ (${selectedYear || activeYear}) લૉક હોવાથી દર સાચવી શકાતો નથી.`, 'warning');
+      return;
+    }
+    if (!checkCanModify('ભાવ દર સાચવો', selectedYear || activeYear)) return;
     try {
       const res = await updateBhavPatrak(row.id, {
         sabhasad_rate: row.sabhasad_rate,
@@ -120,7 +128,11 @@ const BhavPatrakPage = () => {
   };
 
   const handleSaveAll = async () => {
-    if (!checkCanModify('તમામ દર સાચવો')) return;
+    if (isEffectiveYearLocked) {
+      notify(`નાણાકીય વર્ષ (${selectedYear || activeYear}) લૉક હોવાથી દર સાચવી શકાતો નથી.`, 'warning');
+      return;
+    }
+    if (!checkCanModify('તમામ દર સાચવો', selectedYear || activeYear)) return;
     try {
       let errCount = 0;
       for (const r of ratesList) {
@@ -143,7 +155,12 @@ const BhavPatrakPage = () => {
   };
 
   const confirmDelete = async () => {
-    if (!checkCanModify('ભાવ દર ડિલીટ')) return;
+    if (isEffectiveYearLocked) {
+      notify(`નાણાકીય વર્ષ (${selectedYear || activeYear}) લૉક હોવાથી દર ડિલીટ શક્ય નથી.`, 'warning');
+      setDeleteId(null);
+      return;
+    }
+    if (!checkCanModify('ભાવ દર ડિલીટ', selectedYear || activeYear)) return;
     try {
       const res = await deleteBhavPatrak(deleteId);
       setDeleteId(null);
@@ -159,8 +176,8 @@ const BhavPatrakPage = () => {
   };
 
   const handleCopyRates = () => {
-    if (isYearLocked) {
-      showNotification(`પાછલું વર્ષ લૉક હોવાથી ભાવ કોપી કરી શકાતા નથી.`, 'warning');
+    if (isEffectiveYearLocked) {
+      showNotification(`નાણાકીય વર્ષ (${selectedYear || activeYear}) લૉક હોવાથી ભાવ કોપી કરી શકાતા નથી.`, 'warning');
       return;
     }
     const pct = Number(copyForm.percentage) || 0;
@@ -185,26 +202,26 @@ const BhavPatrakPage = () => {
         icon={<CurrencyRupeeIcon sx={{ fontSize: 28 }} />}
         actions={
           <>
-            <Tooltip title={isYearLocked ? `પાછલું વર્ષ (${activeYear}) લૉક હોવાથી ભાવ કોપી કરી શકાતા નથી` : ''}>
+            <Tooltip title={isEffectiveYearLocked ? `પસંદ કરેલું વર્ષ (${selectedYear || activeYear}) લૉક હોવાથી ભાવ કોપી કરી શકાતા નથી` : ''}>
               <span>
                 <Button
                   variant="outlined"
                   color="secondary"
                   startIcon={<ContentCopyIcon />}
-                  disabled={isYearLocked}
+                  disabled={isEffectiveYearLocked}
                   onClick={() => setCopyModalOpen(true)}
                 >
                   ગત સાલમાંથી ભાવ કોપી / વધારો
                 </Button>
               </span>
             </Tooltip>
-            <Tooltip title={isYearLocked ? `પાછલું વર્ષ (${activeYear}) લૉક હોવાથી દર સાચવી શકાતા નથી` : ''}>
+            <Tooltip title={isEffectiveYearLocked ? `પસંદ કરેલું વર્ષ (${selectedYear || activeYear}) લૉક હોવાથી દર સાચવી શકાતા નથી` : ''}>
               <span>
                 <Button
                   variant="contained"
                   color="primary"
                   startIcon={<SaveIcon />}
-                  disabled={isYearLocked}
+                  disabled={isEffectiveYearLocked}
                   onClick={handleSaveAll}
                 >
                   તમામ દર સાચવો
@@ -222,6 +239,12 @@ const BhavPatrakPage = () => {
           </>
         }
       />
+
+      {isEffectiveYearLocked && (
+        <Alert severity="warning" icon={<LockIcon />} sx={{ mb: 2.5 }}>
+          <b>નાણાકીય વર્ષ {selectedYear || activeYear} લૉક છે:</b> ભાવ પત્રક ફક્ત વાંચવા (Read) અને પ્રિન્ટ (Print) કરવા માટે છે. કોઈપણ ફેરફાર કે ડિલીટ પ્રતિબંધિત છે.
+        </Alert>
+      )}
 
       {/* વર્ષ અને ઋતુ સિલેક્ટ બાર */}
       <Card sx={{ mb: 2.5 }} className="no-print">
@@ -323,7 +346,7 @@ const BhavPatrakPage = () => {
                         <TextField
                           type="number"
                           size="small"
-                          disabled={isYearLocked}
+                          disabled={isEffectiveYearLocked}
                           value={r.sabhasad_rate ?? r.sabhasadRate ?? ''}
                           onChange={(e) => handleRateChange(r.id, 'sabhasad_rate', e.target.value)}
                           sx={{ width: 140 }}
@@ -338,7 +361,7 @@ const BhavPatrakPage = () => {
                         <TextField
                           type="number"
                           size="small"
-                          disabled={isYearLocked}
+                          disabled={isEffectiveYearLocked}
                           value={r.nominal_rate ?? r.nominalRate ?? ''}
                           onChange={(e) => handleRateChange(r.id, 'nominal_rate', e.target.value)}
                           sx={{ width: 140 }}
@@ -353,7 +376,7 @@ const BhavPatrakPage = () => {
                         <TextField
                           type="number"
                           size="small"
-                          disabled={isYearLocked}
+                          disabled={isEffectiveYearLocked}
                           value={r.motor_rate ?? r.motorRate ?? ''}
                           onChange={(e) => handleRateChange(r.id, 'motor_rate', e.target.value)}
                           sx={{ width: 140 }}
@@ -364,24 +387,24 @@ const BhavPatrakPage = () => {
                       </span>
                     </TableCell>
                     <TableCell align="center" className="no-print">
-                      <Tooltip title={isYearLocked ? "વર્ષ લૉક હોવાથી દર સાચવી શકાતો નથી" : "આ પાકના દર સાચવો"}>
+                      <Tooltip title={isEffectiveYearLocked ? "વર્ષ લૉક હોવાથી દર સાચવી શકાતો નથી" : "આ પાકના દર સાચવો"}>
                         <span>
                           <IconButton
                             size="small"
                             color="primary"
-                            disabled={isYearLocked}
+                            disabled={isEffectiveYearLocked}
                             onClick={() => handleSaveRow(r)}
                           >
                             <SaveIcon fontSize="small" />
                           </IconButton>
                         </span>
                       </Tooltip>
-                      <Tooltip title={isYearLocked ? "વર્ષ લૉક હોવાથી દર ડિલીટ શક્ય નથી" : "ડિલીટ કરો"}>
+                      <Tooltip title={isEffectiveYearLocked ? "વર્ષ લૉક હોવાથી દર ડિલીટ શક્ય નથી" : "ડિલીટ કરો"}>
                         <span>
                           <IconButton
                             size="small"
                             color="error"
-                            disabled={isYearLocked}
+                            disabled={isEffectiveYearLocked}
                             onClick={() => setDeleteId(r.id)}
                           >
                             <DeleteIcon fontSize="small" />

@@ -3,7 +3,7 @@ import {
   Box, Paper, Grid, TextField, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, MenuItem, Typography, Card,
   CardContent, InputAdornment, IconButton, Tooltip, Chip, Dialog,
-  DialogTitle, DialogContent, DialogActions, TablePagination, CircularProgress
+  DialogTitle, DialogContent, DialogActions, TablePagination, CircularProgress, Alert
 } from '@mui/material';
 import {
   Assignment as AssignmentIcon,
@@ -12,7 +12,8 @@ import {
   Add as AddIcon,
   Save as SaveIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Lock as LockIcon
 } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import PrintSignatures from '../../components/common/PrintSignatures';
@@ -23,7 +24,7 @@ import { formatDate } from '../../utils/dateUtils';
 
 export default function VoucherEntryPage() {
   const { generalAccounts, vouchers, addVoucher, updateVoucher, deleteVoucher, fetchVouchers, fetchGeneralAccounts } = useData();
-  const { activeYear, showToast, isYearLocked, checkCanModify } = useApp();
+  const { activeYear, showToast, isYearLocked, isRecordLocked, checkCanModify } = useApp();
 
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -77,7 +78,11 @@ export default function VoucherEntryPage() {
   ];
 
   const handleOpenAdd = () => {
-    if (!checkCanModify('નવું વાઉચર બનાવવું')) return;
+    if (isRecordLocked && isRecordLocked(activeYear)) {
+      showToast(`નાણાકીય વર્ષ (${activeYear}) લૉક હોવાથી નવું વાઉચર બનાવી શકાતું નથી.`, 'warning');
+      return;
+    }
+    if (!checkCanModify('નવું વાઉચર બનાવવું', activeYear)) return;
     setEditingId(null);
     setFormData({
       voucher_no: `V-${(vouchers.length || 0) + 101}`,
@@ -93,7 +98,12 @@ export default function VoucherEntryPage() {
   };
 
   const handleOpenEdit = (v) => {
-    if (!checkCanModify('વાઉચર સુધારો')) return;
+    const rowYear = v.year_name || v.year || activeYear;
+    if (isRecordLocked && isRecordLocked(rowYear)) {
+      showToast(`નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી વાઉચરમાં ફેરફાર શક્ય નથી.`, 'warning');
+      return;
+    }
+    if (!checkCanModify('વાઉચર સુધારો', rowYear)) return;
     setEditingId(v.id);
     const vDate = v.date;
     setFormData({
@@ -104,13 +114,19 @@ export default function VoucherEntryPage() {
       credit_account: v.credit_account || '',
       amount: v.amount || '',
       narration: v.narration || '',
-      paid_to: v.paid_to || ''
+      paid_to: v.paid_to || '',
+      year_name: rowYear
     });
     setOpenModal(true);
   };
 
   const handleSave = async () => {
-    if (!checkCanModify(editingId ? 'વાઉચર સુધારો' : 'નવું વાઉચર બનાવવું')) return;
+    const targetYear = editingId ? (formData.year_name || activeYear) : activeYear;
+    if (isRecordLocked && isRecordLocked(targetYear)) {
+      showToast(`નાણાકીય વર્ષ (${targetYear}) લૉક હોવાથી સાચવી શકાશે નહીં.`, 'error');
+      return;
+    }
+    if (!checkCanModify(editingId ? 'વાઉચર સુધારો' : 'નવું વાઉચર બનાવવું', targetYear)) return;
     if (!formData.amount || Number(formData.amount) <= 0) {
       showToast('કૃપા કરીને માન્ય રકમ દાખલ કરો', 'warning');
       return;
@@ -123,7 +139,7 @@ export default function VoucherEntryPage() {
     const payload = {
       ...formData,
       amount: Number(formData.amount),
-      year_name: activeYear
+      year_name: targetYear
     };
 
     try {
@@ -152,7 +168,14 @@ export default function VoucherEntryPage() {
   };
 
   const confirmDelete = async () => {
-    if (!checkCanModify('વાઉચર ડિલીટ')) return;
+    const target = (vouchers || []).find(v => v.id === deleteId);
+    const targetYear = target?.year_name || target?.year || activeYear;
+    if (isRecordLocked && isRecordLocked(targetYear)) {
+      showToast(`નાણાકીય વર્ષ (${targetYear}) લૉક હોવાથી વાઉચર ડિલીટ કરી શકાય નહિ.`, 'error');
+      setDeleteId(null);
+      return;
+    }
+    if (!checkCanModify('વાઉચર ડિલીટ', targetYear)) return;
     try {
       const res = await deleteVoucher(deleteId);
       setDeleteId(null);
@@ -167,27 +190,35 @@ export default function VoucherEntryPage() {
     }
   };
 
+  const isCurrentActiveYearLocked = Boolean(isRecordLocked ? isRecordLocked(activeYear) : isYearLocked);
+
   return (
     <Box>
       <PageHeader
         title="વાઉચર એન્ટ્રી (Voucher Entry)"
         subtitle={`નાણાકીય વર્ષ ${activeYear} અને અગાઉના તમામ વર્ષોના હિસાબી વાઉચરો (કુલ: ${totalCount})`}
         actions={
-          <Tooltip title={isYearLocked ? `પાછલું વર્ષ (${activeYear}) લૉક હોવાથી નવું વાઉચર બનાવી શકાતું નથી` : ''}>
+          <Tooltip title={isCurrentActiveYearLocked ? `પાછલું વર્ષ (${activeYear}) લૉક હોવાથી નવું વાઉચર બનાવી શકાતું નથી` : ''}>
             <span>
               <Button
                 variant="contained"
                 color="primary"
                 startIcon={<AddIcon />}
-                disabled={isYearLocked}
+                disabled={isCurrentActiveYearLocked}
                 onClick={handleOpenAdd}
               >
-                {isYearLocked ? 'લૉક વર્ષ (ઉમેરો અમાન્ય)' : 'નવું વાઉચર બનાવો'}
+                {isCurrentActiveYearLocked ? 'લૉક વર્ષ (ઉમેરો અમાન્ય)' : 'નવું વાઉચર બનાવો'}
               </Button>
             </span>
           </Tooltip>
         }
       />
+
+      {isCurrentActiveYearLocked && (
+        <Alert severity="warning" icon={<LockIcon />} sx={{ mb: 2.5 }}>
+          <b>નાણાકીય વર્ષ {activeYear} લૉક છે:</b> વાઉચરો ફક્ત વાંચવા (Read) અને પ્રિન્ટ (Print) કરી શકાય છે. કોઈપણ ફેરફાર કે ડિલીટ પ્રતિબંધિત છે.
+        </Alert>
+      )}
 
       <Paper sx={{ p: 2, mb: 3 }} className="no-print">
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -248,78 +279,83 @@ export default function VoucherEntryPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {(vouchers || []).map((v) => (
-                <TableRow key={v.id} hover>
-                  <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                    {v.voucher_no}
-                  </TableCell>
-                  <TableCell>
-                    <span className="no-print">
-                      <Chip
-                        size="small"
-                        label={v.year_name || activeYear}
-                        color={v.year_name === activeYear ? 'primary' : 'default'}
-                        variant={v.year_name === activeYear ? 'filled' : 'outlined'}
-                        sx={{ fontSize: '0.75rem', fontWeight: 600 }}
-                      />
-                    </span>
-                    <span className="print-only">
-                      {v.year_name || activeYear}
-                    </span>
-                  </TableCell>
-                  <TableCell>{formatDate(v.date)}</TableCell>
-                  <TableCell>
-                    <span className="no-print">
-                      <Chip size="small" label={v.type} color="primary" variant="outlined" />
-                    </span>
-                    <span className="print-only">
-                      {v.type}
-                    </span>
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'error.main' }}>
-                    {v.debit_account}
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'success.main' }}>
-                    {v.credit_account}
-                  </TableCell>
-                  <TableCell>{v.paid_to || '-'}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                    ₹ {Number(v.amount).toLocaleString('gu-IN')}
-                  </TableCell>
-                  <TableCell>{v.narration || '-'}</TableCell>
-                  <TableCell align="center" className="no-print">
-                    <Tooltip title="વાઉચર પ્રિન્ટ કરો">
-                      <IconButton color="default" size="small" onClick={() => window.print()}>
-                        <PrintIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title={isYearLocked ? 'લૉક વર્ષ હોવાથી સુધારી શકાય નહિ' : 'વાઉચર સુધારો'}>
-                      <span>
-                        <IconButton
-                          color="primary"
+              {(vouchers || []).map((v) => {
+                const rowYear = v.year_name || v.year || activeYear;
+                const isRowLocked = Boolean(isRecordLocked ? isRecordLocked(rowYear) : false);
+
+                return (
+                  <TableRow key={v.id} hover>
+                    <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                      {v.voucher_no}
+                    </TableCell>
+                    <TableCell>
+                      <span className="no-print">
+                        <Chip
                           size="small"
-                          disabled={isYearLocked}
-                          onClick={() => handleOpenEdit(v)}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
+                          label={rowYear}
+                          color={rowYear === activeYear ? 'primary' : 'default'}
+                          variant={rowYear === activeYear ? 'filled' : 'outlined'}
+                          sx={{ fontSize: '0.75rem', fontWeight: 600 }}
+                        />
                       </span>
-                    </Tooltip>
-                    <Tooltip title={isYearLocked ? 'લૉક વર્ષ હોવાથી રદ કરી શકાય નહિ' : 'વાઉચર રદ કરો'}>
-                      <span>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          disabled={isYearLocked}
-                          onClick={() => setDeleteId(v.id)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                      <span className="print-only">
+                        {rowYear}
                       </span>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>{formatDate(v.date)}</TableCell>
+                    <TableCell>
+                      <span className="no-print">
+                        <Chip size="small" label={v.type} color="primary" variant="outlined" />
+                      </span>
+                      <span className="print-only">
+                        {v.type}
+                      </span>
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'error.main' }}>
+                      {v.debit_account}
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'success.main' }}>
+                      {v.credit_account}
+                    </TableCell>
+                    <TableCell>{v.paid_to || '-'}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                      ₹ {Number(v.amount).toLocaleString('gu-IN')}
+                    </TableCell>
+                    <TableCell>{v.narration || '-'}</TableCell>
+                    <TableCell align="center" className="no-print">
+                      <Tooltip title="વાઉચર પ્રિન્ટ કરો">
+                        <IconButton color="default" size="small" onClick={() => window.print()}>
+                          <PrintIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={isRowLocked ? `નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી સુધારી શકાય નહિ` : 'વાઉચર સુધારો'}>
+                        <span>
+                          <IconButton
+                            color="primary"
+                            size="small"
+                            disabled={isRowLocked}
+                            onClick={() => handleOpenEdit(v)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title={isRowLocked ? `નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી રદ કરી શકાય નહિ` : 'વાઉચર રદ કરો'}>
+                        <span>
+                          <IconButton
+                            color="error"
+                            size="small"
+                            disabled={isRowLocked}
+                            onClick={() => setDeleteId(v.id)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {(!vouchers || vouchers.length === 0) && (
                 <TableRow>
                   <TableCell colSpan={10} align="center" sx={{ py: 3, color: 'text.secondary' }}>

@@ -3,7 +3,7 @@ import {
   Box, Paper, Grid, TextField, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, MenuItem, Typography, Card,
   CardContent, InputAdornment, IconButton, Tooltip, Chip, Dialog,
-  DialogTitle, DialogContent, DialogActions, TablePagination, CircularProgress
+  DialogTitle, DialogContent, DialogActions, TablePagination, CircularProgress, Alert
 } from '@mui/material';
 import {
   Receipt as ReceiptIcon,
@@ -13,7 +13,8 @@ import {
   Save as SaveIcon,
   Person as PersonIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Lock as LockIcon
 } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import PrintSignatures from '../../components/common/PrintSignatures';
@@ -25,7 +26,7 @@ import { formatDate } from '../../utils/dateUtils';
 
 export default function CashReceiptPage() {
   const { members, receiptBooks, receipts, addReceipt, updateReceipt, deleteReceipt, fetchReceipts, fetchMembers, fetchReceiptBooks } = useData();
-  const { activeYear, showToast, isYearLocked, checkCanModify } = useApp();
+  const { activeYear, showToast, isYearLocked, isRecordLocked, checkCanModify } = useApp();
 
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -86,7 +87,11 @@ export default function CashReceiptPage() {
   };
 
   const handleOpenAdd = () => {
-    if (!checkCanModify('નવી રસીદ ઉમેરો')) return;
+    if (isRecordLocked && isRecordLocked(activeYear)) {
+      showToast(`નાણાકીય વર્ષ (${activeYear}) લૉક હોવાથી નવી રસીદ ઉમેરી શકાય નહિ.`, 'warning');
+      return;
+    }
+    if (!checkCanModify('નવી રસીદ ઉમેરો', activeYear)) return;
     setEditingId(null);
     const nextNo = `R-${(activeBook.current_no || 100) + 1}`;
     setFormData({
@@ -104,7 +109,12 @@ export default function CashReceiptPage() {
   };
 
   const handleOpenEdit = (r) => {
-    if (!checkCanModify('રસીદ સુધારો')) return;
+    const rowYear = r.year_name || r.year || activeYear;
+    if (isRecordLocked && isRecordLocked(rowYear)) {
+      showToast(`નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી રસીદમાં ફેરફાર શક્ય નથી.`, 'warning');
+      return;
+    }
+    if (!checkCanModify('રસીદ સુધારો', rowYear)) return;
     setEditingId(r.id);
     const mem = members.find((m) => m.id === Number(r.member_id)) || {
       id: r.member_id,
@@ -122,13 +132,19 @@ export default function CashReceiptPage() {
       amount: r.amount || '',
       pay_mode: r.pay_mode || 'રોકડ',
       narration: r.narration || '',
-      receiver: r.receiver || 'દિનેશભાઈ ચૌધરી (મંત્રી)'
+      receiver: r.receiver || 'દિનેશભાઈ ચૌધરી (મંત્રી)',
+      year_name: rowYear
     });
     setOpenModal(true);
   };
 
   const handleSave = async () => {
-    if (!checkCanModify(editingId ? 'રસીદ સુધારો' : 'નવી રસીદ સાચવો')) return;
+    const targetYear = editingId ? (formData.year_name || activeYear) : activeYear;
+    if (isRecordLocked && isRecordLocked(targetYear)) {
+      showToast(`નાણાકીય વર્ષ (${targetYear}) લૉક હોવાથી સાચવી શકાશે નહીં.`, 'error');
+      return;
+    }
+    if (!checkCanModify(editingId ? 'રસીદ સુધારો' : 'નવી રસીદ સાચવો', targetYear)) return;
     if (!formData.amount || Number(formData.amount) <= 0) {
       showToast('કૃપા કરીને માન્ય રકમ દાખલ કરો', 'warning');
       return;
@@ -174,7 +190,14 @@ export default function CashReceiptPage() {
   };
 
   const confirmDelete = async () => {
-    if (!checkCanModify('રસીદ ડિલીટ')) return;
+    const target = (receipts || []).find(r => r.id === deleteId);
+    const targetYear = target?.year_name || target?.year || activeYear;
+    if (isRecordLocked && isRecordLocked(targetYear)) {
+      showToast(`નાણાકીય વર્ષ (${targetYear}) લૉક હોવાથી રસીદ ડિલીટ કરી શકાય નહિ.`, 'error');
+      setDeleteId(null);
+      return;
+    }
+    if (!checkCanModify('રસીદ ડિલીટ', targetYear)) return;
     try {
       const res = await deleteReceipt(deleteId);
       setDeleteId(null);
@@ -189,27 +212,35 @@ export default function CashReceiptPage() {
     }
   };
 
+  const isCurrentActiveYearLocked = Boolean(isRecordLocked ? isRecordLocked(activeYear) : isYearLocked);
+
   return (
     <Box>
       <PageHeader
         title="રોકડ રસીદ એન્ટ્રી અને પાવતી"
         subtitle={`નાણાકીય વર્ષ ${activeYear} અને અગાઉના તમામ વર્ષોની પિયત બિલિંગ પેટે જમા થયેલ રોકડ રસીદો (કુલ: ${totalCount})`}
         actions={
-          <Tooltip title={isYearLocked ? `પાછલું વર્ષ (${activeYear}) લૉક હોવાથી નવી રસીદ ઉમેરી શકાતી નથી` : ''}>
+          <Tooltip title={isCurrentActiveYearLocked ? `પાછલું વર્ષ (${activeYear}) લૉક હોવાથી નવી રસીદ ઉમેરી શકાતી નથી` : ''}>
             <span>
               <Button
                 variant="contained"
                 color="primary"
                 startIcon={<AddIcon />}
-                disabled={isYearLocked}
+                disabled={isCurrentActiveYearLocked}
                 onClick={handleOpenAdd}
               >
-                {isYearLocked ? 'લૉક વર્ષ (ઉમેરો અમાન્ય)' : 'નવી રોકડ રસીદ બનાવો'}
+                {isCurrentActiveYearLocked ? 'લૉક વર્ષ (ઉમેરો અમાન્ય)' : 'નવી રોકડ રસીદ બનાવો'}
               </Button>
             </span>
           </Tooltip>
         }
       />
+
+      {isCurrentActiveYearLocked && (
+        <Alert severity="warning" icon={<LockIcon />} sx={{ mb: 2.5 }}>
+          <b>નાણાકીય વર્ષ {activeYear} લૉક છે:</b> રોકડ રસીદો ફક્ત વાંચવા (Read) અને પ્રિન્ટ (Print) કરી શકાય છે. કોઈપણ ફેરફાર કે ડિલીટ પ્રતિબંધિત છે.
+        </Alert>
+      )}
 
       <Paper sx={{ p: 2, mb: 3 }} className="no-print">
         <TextField
@@ -249,79 +280,84 @@ export default function CashReceiptPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {(receipts || []).map((r) => (
-                <TableRow key={r.id} hover>
-                  <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                    {r.receipt_no}
-                  </TableCell>
-                  <TableCell>
-                    <span className="no-print">
-                      <Chip
-                        size="small"
-                        label={r.year_name || activeYear}
-                        color={r.year_name === activeYear ? 'primary' : 'default'}
-                        variant={r.year_name === activeYear ? 'filled' : 'outlined'}
-                        sx={{ fontSize: '0.75rem', fontWeight: 600 }}
-                      />
-                    </span>
-                    <span className="print-only">
-                      {r.year_name || activeYear}
-                    </span>
-                  </TableCell>
-                  <TableCell>{formatDate(r.date)}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>
-                    {r.member_no} - {r.member_name}
-                  </TableCell>
-                  <TableCell>{r.village_name || '-'}</TableCell>
-                  <TableCell>
-                    <span className="no-print">
-                      <Chip size="small" label={r.book_name || 'મુખ્ય બુક'} variant="outlined" />
-                    </span>
-                    <span className="print-only">
-                      {r.book_name || 'મુખ્ય બુક'}
-                    </span>
-                  </TableCell>
-                  <TableCell>{r.narration}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                    ₹ {Number(r.amount).toLocaleString('gu-IN')}
-                  </TableCell>
-                  <TableCell align="center" className="no-print">
-                    <Tooltip title="રસીદ પહોંચ પ્રિન્ટ કરો">
-                      <IconButton
-                        color="primary"
-                        size="small"
-                        onClick={() => setPrintReceiptData(r)}
-                      >
-                        <PrintIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title={isYearLocked ? 'લૉક વર્ષ હોવાથી સુધારી શકાય નહિ' : 'રસીદ સુધારો'}>
-                      <span>
+              {(receipts || []).map((r) => {
+                const rowYear = r.year_name || r.year || activeYear;
+                const isRowLocked = Boolean(isRecordLocked ? isRecordLocked(rowYear) : false);
+
+                return (
+                  <TableRow key={r.id} hover>
+                    <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                      {r.receipt_no}
+                    </TableCell>
+                    <TableCell>
+                      <span className="no-print">
+                        <Chip
+                          size="small"
+                          label={rowYear}
+                          color={rowYear === activeYear ? 'primary' : 'default'}
+                          variant={rowYear === activeYear ? 'filled' : 'outlined'}
+                          sx={{ fontSize: '0.75rem', fontWeight: 600 }}
+                        />
+                      </span>
+                      <span className="print-only">
+                        {rowYear}
+                      </span>
+                    </TableCell>
+                    <TableCell>{formatDate(r.date)}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>
+                      {r.member_no} - {r.member_name}
+                    </TableCell>
+                    <TableCell>{r.village_name || '-'}</TableCell>
+                    <TableCell>
+                      <span className="no-print">
+                        <Chip size="small" label={r.book_name || 'મુખ્ય બુક'} variant="outlined" />
+                      </span>
+                      <span className="print-only">
+                        {r.book_name || 'મુખ્ય બુક'}
+                      </span>
+                    </TableCell>
+                    <TableCell>{r.narration}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                      ₹ {Number(r.amount).toLocaleString('gu-IN')}
+                    </TableCell>
+                    <TableCell align="center" className="no-print">
+                      <Tooltip title="રસીદ પહોંચ પ્રિન્ટ કરો">
                         <IconButton
                           color="primary"
                           size="small"
-                          disabled={isYearLocked}
-                          onClick={() => handleOpenEdit(r)}
+                          onClick={() => setPrintReceiptData(r)}
                         >
-                          <EditIcon fontSize="small" />
+                          <PrintIcon fontSize="small" />
                         </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title={isYearLocked ? 'લૉક વર્ષ હોવાથી રદ કરી શકાય નહિ' : 'રસીદ રદ કરો'}>
-                      <span>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          disabled={isYearLocked}
-                          onClick={() => setDeleteId(r.id)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))}
+                      </Tooltip>
+                      <Tooltip title={isRowLocked ? `નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી સુધારી શકાય નહિ` : 'રસીદ સુધારો'}>
+                        <span>
+                          <IconButton
+                            color="primary"
+                            size="small"
+                            disabled={isRowLocked}
+                            onClick={() => handleOpenEdit(r)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title={isRowLocked ? `નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી રદ કરી શકાય નહિ` : 'રસીદ રદ કરો'}>
+                        <span>
+                          <IconButton
+                            color="error"
+                            size="small"
+                            disabled={isRowLocked}
+                            onClick={() => setDeleteId(r.id)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {(!receipts || receipts.length === 0) && (
                 <TableRow>
                   <TableCell colSpan={9} align="center" sx={{ py: 3, color: 'text.secondary' }}>

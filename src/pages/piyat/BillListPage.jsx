@@ -20,7 +20,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Alert
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PrintIcon from '@mui/icons-material/Print';
@@ -29,6 +30,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import LockIcon from '@mui/icons-material/Lock';
 import PageHeader from '../../components/common/PageHeader';
 import PrintSignatures from '../../components/common/PrintSignatures';
 import BillPrintModal from '../../components/print/BillPrintModal';
@@ -40,7 +42,7 @@ import { formatDate } from '../../utils/dateUtils';
 
 const BillListPage = () => {
   const { piyatEntries, seasons, fetchPiyatEntries, fetchSeasons, updatePiyatEntry, deletePiyatEntry } = useData();
-  const { activeYear, activeSeason, isYearLocked, yearsList, showToast, showNotification, checkCanModify } = useApp();
+  const { activeYear, activeSeason, isYearLocked, isRecordLocked, yearsList, showToast, showNotification, checkCanModify } = useApp();
   const notify = showToast || showNotification;
   const navigate = useNavigate();
 
@@ -98,7 +100,12 @@ const BillListPage = () => {
   }, [loadData]);
 
   const handleOpenEdit = (p) => {
-    if (!checkCanModify('પિયત એન્ટ્રી સુધારો')) return;
+    const rowYear = p.year_name || p.year || selectedYear || activeYear;
+    if (isRecordLocked && isRecordLocked(rowYear)) {
+      notify(`વર્ષ ${rowYear} લૉક થયેલ હોવાથી આ એન્ટ્રીમાં ફેરફાર શક્ય નથી (ફક્ત વાંચવા/પ્રિન્ટ માટે).`, 'warning');
+      return;
+    }
+    if (!checkCanModify('પિયત એન્ટ્રી સુધારો', rowYear)) return;
     setEditingEntry({
       ...p,
       area_vigha: p.area_vigha ?? p.area ?? 1,
@@ -132,7 +139,12 @@ const BillListPage = () => {
   };
 
   const handleSaveEdit = async () => {
-    if (!checkCanModify('પિયત એન્ટ્રી સાચવો')) return;
+    const targetYear = editingEntry?.year_name || editingEntry?.year || selectedYear || activeYear;
+    if (isRecordLocked && isRecordLocked(targetYear)) {
+      notify(`વર્ષ ${targetYear} લૉક થયેલ હોવાથી સાચવી શકાશે નહીં.`, 'error');
+      return;
+    }
+    if (!checkCanModify('પિયત એન્ટ્રી સાચવો', targetYear)) return;
     try {
       const res = await updatePiyatEntry(editingEntry.id, {
         area_vigha: editingEntry.area_vigha,
@@ -157,7 +169,14 @@ const BillListPage = () => {
   };
 
   const confirmDelete = async () => {
-    if (!checkCanModify('પિયત એન્ટ્રી ડિલીટ')) return;
+    const targetEntry = (piyatEntries || []).find(e => e.id === deleteId);
+    const targetYear = targetEntry?.year_name || targetEntry?.year || selectedYear || activeYear;
+    if (isRecordLocked && isRecordLocked(targetYear)) {
+      notify(`વર્ષ ${targetYear} લૉક થયેલ હોવાથી ડિલીટ શક્ય નથી.`, 'error');
+      setDeleteId(null);
+      return;
+    }
+    if (!checkCanModify('પિયત એન્ટ્રી ડિલીટ', targetYear)) return;
     try {
       const res = await deletePiyatEntry(deleteId);
       setDeleteId(null);
@@ -172,6 +191,12 @@ const BillListPage = () => {
     }
   };
 
+  const isEffectiveYearLocked = Boolean(
+    isRecordLocked
+      ? (selectedYear && selectedYear !== 'all' ? isRecordLocked(selectedYear) : isRecordLocked(activeYear))
+      : isYearLocked
+  );
+
   return (
     <Box>
       <PageHeader
@@ -181,25 +206,25 @@ const BillListPage = () => {
         icon={<ReceiptIcon sx={{ fontSize: 28 }} />}
         actions={
           <>
-            <Tooltip title={isYearLocked ? `પાછલું વર્ષ (${activeYear}) લૉક હોવાથી બિલ જનરેટ કરી શકાતું નથી` : ''}>
+            <Tooltip title={isEffectiveYearLocked ? `પસંદ કરેલું નાણાકીય વર્ષ લૉક હોવાથી બિલ જનરેટ કરી શકાતું નથી` : ''}>
               <span>
                 <Button
                   variant="outlined"
                   color="primary"
-                  disabled={isYearLocked}
+                  disabled={isEffectiveYearLocked}
                   onClick={() => navigate('/piyat/generate-bills')}
                 >
                   બિલ નંબર જનરેટ કરો
                 </Button>
               </span>
             </Tooltip>
-            <Tooltip title={isYearLocked ? `પાછલું વર્ષ (${activeYear}) લૉક હોવાથી નવી એન્ટ્રી ઉમેરી શકાતી નથી` : ''}>
+            <Tooltip title={isEffectiveYearLocked ? `પસંદ કરેલું નાણાકીય વર્ષ લૉક હોવાથી નવી એન્ટ્રી ઉમેરી શકાતી નથી` : ''}>
               <span>
                 <Button
                   variant="contained"
                   color="primary"
                   startIcon={<AddIcon />}
-                  disabled={isYearLocked}
+                  disabled={isEffectiveYearLocked}
                   onClick={() => navigate('/piyat/single')}
                 >
                   નવી પિયત એન્ટ્રી
@@ -209,6 +234,12 @@ const BillListPage = () => {
           </>
         }
       />
+
+      {isEffectiveYearLocked && (
+        <Alert severity="warning" icon={<LockIcon />} sx={{ mb: 2.5 }}>
+          <b>નાણાકીય વર્ષ {selectedYear && selectedYear !== 'all' ? selectedYear : activeYear} લૉક છે:</b> આ વર્ષના બિલો ફક્ત વાંચવા (Read) અને પ્રિન્ટ (Print) કરી શકાય છે. કોઈપણ ફેરફાર કે ડિલીટ પ્રતિબંધિત છે.
+        </Alert>
+      )}
 
       {/* ફિલ્ટર બાર */}
       <Card sx={{ mb: 2.5 }} className="no-print">
@@ -365,113 +396,118 @@ const BillListPage = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                piyatEntries.map((p) => (
-                  <TableRow key={p.id} hover>
-                    <TableCell sx={{ fontWeight: 800, color: '#00695C' }}>
-                      {p.bill_no || p.billNo || (
-                        <>
-                          <span className="no-print"><Chip label="કાચી એન્ટ્રી" size="small" variant="outlined" /></span>
-                          <span className="print-only">કાચી એન્ટ્રી</span>
-                        </>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="no-print">
-                        <Chip
-                          size="small"
-                          label={p.year_name || p.year || selectedYear}
-                          color={p.year_name === selectedYear ? 'primary' : 'default'}
-                          variant={p.year_name === selectedYear ? 'filled' : 'outlined'}
-                          sx={{ fontSize: '0.75rem', fontWeight: 600 }}
-                        />
-                      </span>
-                      <span className="print-only">
-                        {p.year_name || p.year || selectedYear}
-                      </span>
-                    </TableCell>
-                    <TableCell>{formatDate(p.bill_date || p.entry_date)}</TableCell>
-                    <TableCell>{p.member_code || p.memberNo}</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>{p.member_name_guj || p.memberName}</TableCell>
-                    <TableCell>{p.village_name || p.villageName || '-'}</TableCell>
-                    <TableCell>{p.crop_name_guj || p.cropName}</TableCell>
-                    <TableCell align="right">{p.area_vigha ?? p.area ?? 1}</TableCell>
-                    <TableCell align="right">{p.pani_count ?? p.paniCount ?? 1}</TableCell>
-                    <TableCell align="right" sx={{ color: '#dc2626' }}>₹ {p.cess_20 ?? p.cess20 ?? 0}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 800, color: '#00695C', fontSize: '0.96rem' }}>
-                      ₹ {p.total_amount ?? p.totalAmount ?? 0}
-                    </TableCell>
-                    <TableCell align="center">
-                      <span className="no-print">
-                        <Chip
-                          label={p.status || 'મંજૂર'}
-                          size="small"
-                          color={p.is_billed ? 'success' : 'default'}
-                          variant={p.is_billed ? 'filled' : 'outlined'}
-                          sx={{ fontSize: '0.75rem', fontWeight: 600 }}
-                        />
-                      </span>
-                      <span className="print-only">
-                        {p.status || 'મંજૂર'}
-                      </span>
-                    </TableCell>
-                    <TableCell align="center" className="no-print">
-                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-                        <Tooltip title="આ બિલ પ્રિન્ટ કરો">
-                          <IconButton
-                            color="info"
+                piyatEntries.map((p) => {
+                  const rowYear = p.year_name || p.year || selectedYear || activeYear;
+                  const isRowLocked = Boolean(isRecordLocked ? isRecordLocked(rowYear) : false);
+
+                  return (
+                    <TableRow key={p.id} hover>
+                      <TableCell sx={{ fontWeight: 800, color: '#00695C' }}>
+                        {p.bill_no || p.billNo || (
+                          <>
+                            <span className="no-print"><Chip label="કાચી એન્ટ્રી" size="small" variant="outlined" /></span>
+                            <span className="print-only">કાચી એન્ટ્રી</span>
+                          </>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="no-print">
+                          <Chip
                             size="small"
-                            onClick={() => setSelectedBillForPrint({
-                              ...p,
-                              billNo: p.bill_no || p.billNo || `B-${p.id}`,
-                              billDate: formatDate(p.bill_date || p.entry_date),
-                              memberName: p.member_name_guj || p.memberName,
-                              memberNo: p.member_code || p.memberNo,
-                              cropName: p.crop_name_guj || p.cropName,
-                              area: p.area_vigha || p.area || 1,
-                              paniCount: p.pani_count || p.paniCount || 1,
-                              rate: p.rate || 150,
-                              baseAmount: p.base_amount || p.baseAmount || 150,
-                              cess20: p.cess_20 || p.cess20 || 30,
-                              totalAmount: p.total_amount || p.totalAmount || 180,
-                              waterType: p.water_type || p.waterType || 'વહેતા પાણી',
-                              blockNo: p.block_no || p.blockNo || '૧',
-                              season: p.season_name || p.season || selectedSeason,
-                              year: p.year_name || p.year || selectedYear,
-                              villageName: p.village_name_guj || p.village || p.villageName || 'ભારૂંડી',
-                              category: p.category || 'સભાસદ'
-                            })}
-                          >
-                            <PrintIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={isYearLocked ? "વર્ષ લૉક હોવાથી સુધારો શક્ય નથી" : "સુધારો"}>
-                          <span>
+                            label={p.year_name || p.year || selectedYear}
+                            color={p.year_name === selectedYear ? 'primary' : 'default'}
+                            variant={p.year_name === selectedYear ? 'filled' : 'outlined'}
+                            sx={{ fontSize: '0.75rem', fontWeight: 600 }}
+                          />
+                        </span>
+                        <span className="print-only">
+                          {p.year_name || p.year || selectedYear}
+                        </span>
+                      </TableCell>
+                      <TableCell>{formatDate(p.bill_date || p.entry_date)}</TableCell>
+                      <TableCell>{p.member_code || p.memberNo}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{p.member_name_guj || p.memberName}</TableCell>
+                      <TableCell>{p.village_name || p.villageName || '-'}</TableCell>
+                      <TableCell>{p.crop_name_guj || p.cropName}</TableCell>
+                      <TableCell align="right">{p.area_vigha ?? p.area ?? 1}</TableCell>
+                      <TableCell align="right">{p.pani_count ?? p.paniCount ?? 1}</TableCell>
+                      <TableCell align="right" sx={{ color: '#dc2626' }}>₹ {p.cess_20 ?? p.cess20 ?? 0}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 800, color: '#00695C', fontSize: '0.96rem' }}>
+                        ₹ {p.total_amount ?? p.totalAmount ?? 0}
+                      </TableCell>
+                      <TableCell align="center">
+                        <span className="no-print">
+                          <Chip
+                            label={p.status || 'મંજૂર'}
+                            size="small"
+                            color={p.is_billed ? 'success' : 'default'}
+                            variant={p.is_billed ? 'filled' : 'outlined'}
+                            sx={{ fontSize: '0.75rem', fontWeight: 600 }}
+                          />
+                        </span>
+                        <span className="print-only">
+                          {p.status || 'મંજૂર'}
+                        </span>
+                      </TableCell>
+                      <TableCell align="center" className="no-print">
+                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                          <Tooltip title="આ બિલ પ્રિન્ટ કરો">
                             <IconButton
+                              color="info"
                               size="small"
-                              color="primary"
-                              disabled={isYearLocked}
-                              onClick={() => handleOpenEdit(p)}
+                              onClick={() => setSelectedBillForPrint({
+                                ...p,
+                                billNo: p.bill_no || p.billNo || `B-${p.id}`,
+                                billDate: formatDate(p.bill_date || p.entry_date),
+                                memberName: p.member_name_guj || p.memberName,
+                                memberNo: p.member_code || p.memberNo,
+                                cropName: p.crop_name_guj || p.cropName,
+                                area: p.area_vigha || p.area || 1,
+                                paniCount: p.pani_count || p.paniCount || 1,
+                                rate: p.rate || 150,
+                                baseAmount: p.base_amount || p.baseAmount || 150,
+                                cess20: p.cess_20 || p.cess20 || 30,
+                                totalAmount: p.total_amount || p.totalAmount || 180,
+                                waterType: p.water_type || p.waterType || 'વહેતા પાણી',
+                                blockNo: p.block_no || p.blockNo || '૧',
+                                season: p.season_name || p.season || selectedSeason,
+                                year: p.year_name || p.year || selectedYear,
+                                villageName: p.village_name_guj || p.village || p.villageName || 'ભારૂંડી',
+                                category: p.category || 'સભાસદ'
+                              })}
                             >
-                              <EditIcon fontSize="small" />
+                              <PrintIcon fontSize="small" />
                             </IconButton>
-                          </span>
-                        </Tooltip>
-                        <Tooltip title={isYearLocked ? "વર્ષ લૉક હોવાથી ડિલીટ શક્ય નથી" : "ડિલીટ કરો"}>
-                          <span>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              disabled={isYearLocked}
-                              onClick={() => setDeleteId(p.id)}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))
+                          </Tooltip>
+                          <Tooltip title={isRowLocked ? `નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી સુધારો શક્ય નથી (ફક્ત વાંચવા/પ્રિન્ટ માટે)` : "સુધારો"}>
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                disabled={isRowLocked}
+                                onClick={() => handleOpenEdit(p)}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                          <Tooltip title={isRowLocked ? `નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી ડિલીટ શક્ય નથી` : "ડિલીટ કરો"}>
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                disabled={isRowLocked}
+                                onClick={() => setDeleteId(p.id)}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

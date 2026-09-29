@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, Typography, Card, CardContent, Grid, Button, Chip, Divider, CircularProgress,
@@ -20,6 +20,9 @@ export default function TrialBalancePage() {
   const { generalAccounts, fetchGeneralAccounts, apiBase } = useData();
   const { activeYear, societyInfo } = useApp();
   const currentApiBase = apiBase || 'http://localhost:5000/api';
+
+  const generalAccountsRef = useRef(generalAccounts);
+  generalAccountsRef.current = generalAccounts;
 
   const [loading, setLoading] = useState(false);
   const [trialRows, setTrialRows] = useState([]);
@@ -53,7 +56,7 @@ export default function TrialBalancePage() {
         }
       } else {
         // Fallback based on generalAccounts
-        const fallback = (generalAccounts || []).map((a) => ({
+        const fallback = (generalAccountsRef.current || []).map((a) => ({
           code: a.code,
           name: a.name,
           group: a.group_name || 'સામાન્ય',
@@ -70,16 +73,18 @@ export default function TrialBalancePage() {
     } finally {
       setLoading(false);
     }
-  }, [activeYear, generalAccounts]);
+  }, [activeYear, currentApiBase]);
 
   useEffect(() => {
     fetchGeneralAccounts();
+  }, [fetchGeneralAccounts]);
+
+  useEffect(() => {
     loadTrialBalance(appliedToDate);
-  }, [fetchGeneralAccounts, loadTrialBalance, appliedToDate]);
+  }, [loadTrialBalance, appliedToDate]);
 
   const handleFilter = () => {
     setAppliedToDate(toDate);
-    loadTrialBalance(toDate);
   };
 
   const totalDebit = summary.totalDebit || trialRows.reduce((s, r) => s + r.debit, 0);

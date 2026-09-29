@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { Snackbar, Alert } from '@mui/material';
+import { toEnglishDigits, toGujaratiDigits } from '../utils/dateUtils';
 
 const AppContext = createContext();
 
@@ -29,12 +30,62 @@ export function AppProvider({ children }) {
   });
 
   const [yearsList, setYearsList] = useState(DEFAULT_YEARS);
-  const [activeYear, setActiveYear] = useState(CURRENT_SYSTEM_YEAR);
+  const [activeYear, setActiveYear] = useState(() => {
+    try {
+      return sessionStorage.getItem('bharundi_active_year') || CURRENT_SYSTEM_YEAR;
+    } catch (e) {
+      return CURRENT_SYSTEM_YEAR;
+    }
+  });
   const [activeSeason, setActiveSeason] = useState('ચોમાસુ (ખરીફ)');
 
-  // Determine if active year is locked (Rule: Only 2026-2027 is active/modifiable)
-  const isCurrentYear = activeYear === CURRENT_SYSTEM_YEAR || activeYear === '2026-2027';
-  const isYearLocked = !isCurrentYear;
+  // Refresh years list from database
+  const refreshYears = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/masters/years`).then((r) => r.json());
+      if (res.success && res.data?.length > 0) {
+        setYearsList(res.data);
+      }
+    } catch (err) {
+      console.warn('Years fetch error:', err);
+    }
+  }, []);
+
+  // Check if any given year is locked (Rule: is_locked=1 OR not current active year)
+  const isRecordLocked = useCallback((recordYear) => {
+    if (!recordYear) return false;
+    const targetNorm = toEnglishDigits(String(recordYear)).trim();
+    const targetGuj = toGujaratiDigits(targetNorm);
+
+    const found = (yearsList || []).find((y) => {
+      const yName = y.year_name || y.name || '';
+      const yNorm = toEnglishDigits(yName).trim();
+      return yNorm === targetNorm || yName === recordYear || yName === targetGuj;
+    });
+
+    if (found) {
+      return Boolean(found.is_locked) || !Boolean(found.is_current);
+    }
+
+    // If not found in list, check if matches any year with is_current === 1
+    const curr = (yearsList || []).find((y) => Boolean(y.is_current));
+    if (curr) {
+      const currNorm = toEnglishDigits(curr.year_name || curr.name || '').trim();
+      return targetNorm !== currNorm;
+    }
+
+    return false;
+  }, [yearsList]);
+
+  // Is the currently active session year locked?
+  const isYearLocked = useMemo(() => {
+    return isRecordLocked(activeYear);
+  }, [isRecordLocked, activeYear]);
+
+  const isCurrentYear = useMemo(() => {
+    return !isYearLocked;
+  }, [isYearLocked]);
+
   const canModify = !isYearLocked;
 
   // ડેટાબેઝમાંથી સોસાયટી પ્રોફાઇલ અને સક્રિય વર્ષ/ઋતુ લોડ કરો
@@ -64,7 +115,14 @@ export function AppProvider({ children }) {
         if (res.success && res.data?.length > 0) {
           setYearsList(res.data);
           const current = res.data.find((y) => y.is_current === 1 || y.is_current === true);
-          if (current) setActiveYear(current.year_name || current.name);
+          const savedActive = sessionStorage.getItem('bharundi_active_year');
+          if (savedActive) {
+            setActiveYear(savedActive);
+          } else if (current) {
+            const yr = current.year_name || current.name;
+            setActiveYear(yr);
+            sessionStorage.setItem('bharundi_active_year', yr);
+          }
         }
       })
       .catch((err) => console.warn('Years fetch error:', err));
@@ -115,7 +173,8 @@ export function AppProvider({ children }) {
 
   const changeYear = (newYear) => {
     setActiveYear(newYear);
-    const locked = newYear !== CURRENT_SYSTEM_YEAR && newYear !== '2026-2027';
+    sessionStorage.setItem('bharundi_active_year', newYear);
+    const locked = isRecordLocked(newYear);
     if (locked) {
       showToast(`નાણાકીય વર્ષ બદલાયું: ${newYear} (પાછલું વર્ષ લૉક છે - ફક્ત વાંચવા અને પ્રિન્ટ માટે)`, 'warning');
     } else {
@@ -128,9 +187,9 @@ export function AppProvider({ children }) {
     showToast(`ઋતુ બદલાઈ: ${newSeason}`, 'info');
   };
 
-  const checkCanModify = (actionName = 'ફેરફાર') => {
-    if (isYearLocked) {
-      showToast(`પાછલા વર્ષ (${activeYear}) નો ડેટા લૉક છે. ફક્ત વાંચવા (Read) અને પ્રિન્ટ (Print) ની પરવાનગી છે. ${actionName} શક્ય નથી.`, 'error');
+  const checkCanModify = (actionName = 'ફેરફાર', targetYear = activeYear) => {
+    if (isRecordLocked(targetYear)) {
+      showToast(`પાછલા લૉક કરેલા વર્ષ (${targetYear}) માં ફેરફાર અમાન્ય છે. ફક્ત વાંચવા (Read) અને પ્રિન્ટ (Print) ની પરવાનગી છે. ${actionName} શક્ય નથી.`, 'error');
       return false;
     }
     return true;
@@ -169,9 +228,11 @@ export function AppProvider({ children }) {
         activeSeason,
         changeSeason,
         yearsList,
+        refreshYears,
         currentSystemYear: CURRENT_SYSTEM_YEAR,
         isCurrentYear,
         isYearLocked,
+        isRecordLocked,
         canModify,
         checkCanModify,
         user,

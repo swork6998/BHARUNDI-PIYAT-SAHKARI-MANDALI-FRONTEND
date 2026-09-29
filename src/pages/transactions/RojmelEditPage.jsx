@@ -24,7 +24,7 @@ import { useApp } from '../../context/AppContext';
 
 export default function RojmelEditPage() {
   const { vouchers, receipts, fetchVouchers, fetchReceipts, updateReceipt, deleteReceipt, updateVoucher, deleteVoucher } = useData();
-  const { showToast, activeYear, isYearLocked, checkCanModify } = useApp();
+  const { showToast, activeYear, isYearLocked, isRecordLocked, checkCanModify } = useApp();
 
   useEffect(() => {
     fetchReceipts(activeYear);
@@ -48,6 +48,7 @@ export default function RojmelEditPage() {
       raw: r,
       kind: 'રસીદ (જમા)',
       doc_no: r.receipt_no,
+      year_name: r.year_name || activeYear,
       date: r.date ? (typeof r.date === 'string' ? r.date.split('T')[0] : new Date(r.date).toISOString().split('T')[0]) : '',
       account_name: `${r.member_name || ''} (${r.member_no || ''})`,
       amount: Number(r.amount),
@@ -60,12 +61,13 @@ export default function RojmelEditPage() {
       raw: v,
       kind: `વાઉચર (${v.type || 'ખર્ચ'})`,
       doc_no: v.voucher_no,
+      year_name: v.year_name || activeYear,
       date: v.date ? (typeof v.date === 'string' ? v.date.split('T')[0] : new Date(v.date).toISOString().split('T')[0]) : '',
       account_name: `${v.debit_account || ''} / ${v.credit_account || ''}`,
       amount: Number(v.amount),
       narration: v.narration || v.paid_to
     }))
-  ], [receipts, vouchers]);
+  ], [receipts, vouchers, activeYear]);
 
   const filtered = useMemo(() => {
     return allEntries.filter((e) => {
@@ -85,13 +87,23 @@ export default function RojmelEditPage() {
   }, [filtered, page, rowsPerPage]);
 
   const handleEditClick = (item) => {
-    if (!checkCanModify('સુધારો')) return;
+    const rowYear = item.year_name || activeYear;
+    if (isRecordLocked && isRecordLocked(rowYear)) {
+      showToast(`નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી સુધારો શક્ય નથી.`, 'warning');
+      return;
+    }
+    if (!checkCanModify('સુધારો', rowYear)) return;
     setEditingItem({ ...item });
   };
 
   const handleSaveEdit = async () => {
-    if (!checkCanModify('સુધારો સાચવો')) return;
     if (!editingItem) return;
+    const targetYear = editingItem.year_name || activeYear;
+    if (isRecordLocked && isRecordLocked(targetYear)) {
+      showToast(`નાણાકીય વર્ષ (${targetYear}) લૉક હોવાથી સાચવી શકાશે નહીં.`, 'error');
+      return;
+    }
+    if (!checkCanModify('સુધારો સાચવો', targetYear)) return;
     try {
       if (editingItem.entryType === 'receipt') {
         const payload = {
@@ -130,8 +142,14 @@ export default function RojmelEditPage() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!checkCanModify('રદ કરો')) return;
     if (!deleteConfirm) return;
+    const targetYear = deleteConfirm.year_name || activeYear;
+    if (isRecordLocked && isRecordLocked(targetYear)) {
+      showToast(`નાણાકીય વર્ષ (${targetYear}) લૉક હોવાથી રદ કરી શકાય નહિ.`, 'error');
+      setDeleteConfirm(null);
+      return;
+    }
+    if (!checkCanModify('રદ કરો', targetYear)) return;
     try {
       if (deleteConfirm.entryType === 'receipt') {
         const res = await deleteReceipt(deleteConfirm.originalId);
@@ -157,6 +175,8 @@ export default function RojmelEditPage() {
     }
   };
 
+  const isCurrentActiveYearLocked = Boolean(isRecordLocked ? isRecordLocked(activeYear) : isYearLocked);
+
   return (
     <Box>
       <PageHeader
@@ -164,9 +184,9 @@ export default function RojmelEditPage() {
         subtitle="દૈનિક રોજમેળમાં નોંધાયેલ રસીદો અને વાઉચરોમાં ભૂલ સુધારણા અથવા રદ કરવાની પ્રક્રિયા"
       />
 
-      {isYearLocked && (
+      {isCurrentActiveYearLocked && (
         <Alert severity="warning" icon={<LockIcon />} sx={{ mb: 2.5 }}>
-          <b>પાછલું વર્ષ લૉક છે ({activeYear}):</b> ફક્ત વાંચવા (Read) અને પ્રિન્ટ (Print) ની પરવાનગી છે. રોજમેળમાં કોઈ પણ ફેરફાર કે રદ્દીકરણ શક્ય નથી.
+          <b>નાણાકીય વર્ષ {activeYear} લૉક છે:</b> ફક્ત વાંચવા (Read) અને પ્રિન્ટ (Print) ની પરવાનગી છે. રોજમેળમાં કોઈ પણ ફેરફાર કે રદ્દીકરણ શક્ય નથી.
         </Alert>
       )}
 
@@ -262,51 +282,56 @@ export default function RojmelEditPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {pagedEntries.map((item) => (
-                <TableRow key={item.id} hover>
-                  <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                    {item.doc_no}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={item.kind}
-                      color={item.kind.includes('જમા') ? 'success' : 'error'}
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell>{formatDate(item.date)}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{item.account_name}</TableCell>
-                  <TableCell>{item.narration}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                    ₹ {item.amount.toLocaleString('gu-IN')}
-                  </TableCell>
-                  <TableCell align="center" className="no-print">
-                    <Tooltip title={isYearLocked ? "પાછલું વર્ષ લૉક હોવાથી સુધારો અમાન્ય છે" : "સુધારો કરો"}>
-                      <span>
-                        <IconButton
-                          color="primary"
-                          disabled={isYearLocked}
-                          onClick={() => handleEditClick(item)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title={isYearLocked ? "પાછલું વર્ષ લૉક હોવાથી રદ કરવું અમાન્ય છે" : "રદ કરો"}>
-                      <span>
-                        <IconButton
-                          color="error"
-                          disabled={isYearLocked}
-                          onClick={() => setDeleteConfirm(item)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {pagedEntries.map((item) => {
+                const rowYear = item.year_name || activeYear;
+                const isRowLocked = Boolean(isRecordLocked ? isRecordLocked(rowYear) : false);
+
+                return (
+                  <TableRow key={item.id} hover>
+                    <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                      {item.doc_no}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={item.kind}
+                        color={item.kind.includes('જમા') ? 'success' : 'error'}
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell>{formatDate(item.date)}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{item.account_name}</TableCell>
+                    <TableCell>{item.narration}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                      ₹ {item.amount.toLocaleString('gu-IN')}
+                    </TableCell>
+                    <TableCell align="center" className="no-print">
+                      <Tooltip title={isRowLocked ? `નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી સુધારો અમાન્ય છે` : "સુધારો કરો"}>
+                        <span>
+                          <IconButton
+                            color="primary"
+                            disabled={isRowLocked}
+                            onClick={() => handleEditClick(item)}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title={isRowLocked ? `નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી રદ કરવું અમાન્ય છે` : "રદ કરો"}>
+                        <span>
+                          <IconButton
+                            color="error"
+                            disabled={isRowLocked}
+                            onClick={() => setDeleteConfirm(item)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {filtered.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>

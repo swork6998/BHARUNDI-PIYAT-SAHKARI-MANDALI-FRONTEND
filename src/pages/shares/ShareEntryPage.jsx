@@ -38,7 +38,7 @@ import { formatDate } from '../../utils/dateUtils';
 
 const ShareEntryPage = () => {
   const { shares, addShare, updateShare, deleteShare, members, fetchShares, fetchMembers } = useData();
-  const { showToast, activeYear, isYearLocked, checkCanModify } = useApp();
+  const { showToast, activeYear, isYearLocked, isRecordLocked, checkCanModify } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
@@ -83,8 +83,14 @@ const ShareEntryPage = () => {
     fetchMembers(activeYear);
   }, [fetchMembers, activeYear]);
 
+  const isCurrentActiveYearLocked = Boolean(isRecordLocked ? isRecordLocked(activeYear) : isYearLocked);
+
   const handleOpenAdd = () => {
-    if (!checkCanModify('નવા શેર ફાળવો')) return;
+    if (isCurrentActiveYearLocked) {
+      showToast('પાછલું વર્ષ લૉક હોવાથી નવા શેર ફાળવી શકાશે નહીં.', 'warning');
+      return;
+    }
+    if (!checkCanModify('નવા શેર ફાળવો', activeYear)) return;
     setEditingId(null);
     setFormData({
       certiNo: `C-010${(shares?.length || 0) + 1}`,
@@ -101,7 +107,12 @@ const ShareEntryPage = () => {
   };
 
   const handleOpenEdit = (s) => {
-    if (!checkCanModify('શેર સુધારો')) return;
+    const rowYear = s.year_name || s.year || activeYear;
+    if (isRecordLocked && isRecordLocked(rowYear)) {
+      showToast(`નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી શેર વિગતમાં સુધારો શક્ય નથી.`, 'warning');
+      return;
+    }
+    if (!checkCanModify('શેર સુધારો', rowYear)) return;
     setEditingId(s.id);
     const iDate = s.issue_date || s.issueDate;
     const tDate = s.tharav_date || s.tharavDate;
@@ -168,7 +179,14 @@ const ShareEntryPage = () => {
   };
 
   const confirmDelete = async () => {
-    if (!checkCanModify('શેર ડિલીટ')) return;
+    const target = (shares || []).find(s => s.id === deleteId);
+    const targetYear = target?.year_name || target?.year || activeYear;
+    if (isRecordLocked && isRecordLocked(targetYear)) {
+      showToast(`નાણાકીય વર્ષ (${targetYear}) લૉક હોવાથી ડિલીટ કરી શકાશે નહીં.`, 'error');
+      setDeleteId(null);
+      return;
+    }
+    if (!checkCanModify('શેર ડિલીટ', targetYear)) return;
     try {
       const res = await deleteShare(deleteId);
       setDeleteId(null);
@@ -191,12 +209,12 @@ const ShareEntryPage = () => {
         breadcrumb="શેર / શેર ફાળવણી"
         icon={<CardMembershipIcon sx={{ fontSize: 28 }} />}
         actions={
-          <Tooltip title={isYearLocked ? "પાછલું વર્ષ લૉક હોવાથી નવા શેર ફાળવી શકાશે નહીં" : ""}>
+          <Tooltip title={isCurrentActiveYearLocked ? "પાછલું વર્ષ લૉક હોવાથી નવા શેર ફાળવી શકાશે નહીં" : ""}>
             <span>
               <Button
                 variant="contained"
                 color="primary"
-                disabled={isYearLocked}
+                disabled={isCurrentActiveYearLocked}
                 startIcon={<AddIcon />}
                 onClick={handleOpenAdd}
               >
@@ -207,9 +225,9 @@ const ShareEntryPage = () => {
         }
       />
 
-      {isYearLocked && (
+      {isCurrentActiveYearLocked && (
         <Alert severity="warning" icon={<LockIcon />} sx={{ mb: 2.5 }}>
-          <b>પાછલું વર્ષ લૉક છે ({activeYear}):</b> ફક્ત વાંચવા (Read) અને પ્રિન્ટ (Print) ની પરવાનગી છે. શેર ફાળવણીમાં ફેરફાર શક્ય નથી.
+          <b>નાણાકીય વર્ષ {activeYear} લૉક છે:</b> શેર ફાળવણી વિગતો ફક્ત વાંચવા અને પ્રિન્ટ માટે છે. કોઈપણ ફેરફાર કે ડિલીટ પ્રતિબંધિત છે.
         </Alert>
       )}
 
@@ -267,6 +285,9 @@ const ShareEntryPage = () => {
                 const amt = s.amount;
                 const iDate = formatDate(s.issue_date || s.issueDate);
                 const tDate = s.tharav_date || s.tharavDate ? formatDate(s.tharav_date || s.tharavDate) : (s.tharav_no || '-');
+                const rowYear = s.year_name || s.year || activeYear;
+                const isRowLocked = Boolean(isRecordLocked ? isRecordLocked(rowYear) : false);
+
                 return (
                   <TableRow key={s.id} hover>
                     <TableCell sx={{ fontWeight: 800, color: '#00695C' }}>{certiNo}</TableCell>
@@ -282,24 +303,24 @@ const ShareEntryPage = () => {
                     <TableCell>{iDate}</TableCell>
                     <TableCell>{tDate}</TableCell>
                     <TableCell align="center" className="no-print">
-                      <Tooltip title={isYearLocked ? "વર્ષ લૉક હોવાથી સુધારો શક્ય નથી" : "સુધારો"}>
+                      <Tooltip title={isRowLocked ? `નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી સુધારો શક્ય નથી` : "સુધારો"}>
                         <span>
                           <IconButton
                             size="small"
                             color="primary"
-                            disabled={isYearLocked}
+                            disabled={isRowLocked}
                             onClick={() => handleOpenEdit(s)}
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </span>
                       </Tooltip>
-                      <Tooltip title={isYearLocked ? "વર્ષ લૉક હોવાથી ડિલીટ શક્ય નથી" : "ડિલીટ કરો"}>
+                      <Tooltip title={isRowLocked ? `નાણાકીય વર્ષ (${rowYear}) લૉક હોવાથી ડિલીટ શક્ય નથી` : "ડિલીટ કરો"}>
                         <span>
                           <IconButton
                             size="small"
                             color="error"
-                            disabled={isYearLocked}
+                            disabled={isRowLocked}
                             onClick={() => setDeleteId(s.id)}
                           >
                             <DeleteIcon fontSize="small" />
