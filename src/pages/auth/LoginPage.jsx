@@ -14,7 +14,7 @@ import {
 import { useApp } from '../../context/AppContext';
 
 export default function LoginPage({ onLoginSuccess }) {
-  const { societyInfo, activeYear, changeYear, showToast, login, yearsList } = useApp();
+  const { societyInfo, activeYear, changeYear, showToast, login, yearsList, apiBase } = useApp();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -33,7 +33,7 @@ export default function LoginPage({ onLoginSuccess }) {
     setErrorMsg('');
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${apiBase || 'http://localhost:5000/api'}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.trim(), password: password.trim() })

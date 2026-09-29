@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 
 const DataContext = createContext();
 
-const API_BASE = 'http://localhost:5000/api';
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
 export function DataProvider({ children }) {
   // પેજ-વાઇઝ લોડિંગ ફ્લેગ્સ
@@ -1209,7 +1209,8 @@ export function DataProvider({ children }) {
         vouchers,
         addVoucher,
         updateVoucher,
-        deleteVoucher
+        deleteVoucher,
+        apiBase: API_BASE
       }}
     >
       {children}

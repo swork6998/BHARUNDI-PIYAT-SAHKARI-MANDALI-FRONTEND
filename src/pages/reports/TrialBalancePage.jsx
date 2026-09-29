@@ -17,8 +17,9 @@ import { useData } from '../../context/DataContext';
 import { useApp } from '../../context/AppContext';
 
 export default function TrialBalancePage() {
-  const { generalAccounts, fetchGeneralAccounts } = useData();
+  const { generalAccounts, fetchGeneralAccounts, apiBase } = useData();
   const { activeYear, societyInfo } = useApp();
+  const currentApiBase = apiBase || 'http://localhost:5000/api';
 
   const [loading, setLoading] = useState(false);
   const [trialRows, setTrialRows] = useState([]);
@@ -30,8 +31,8 @@ export default function TrialBalancePage() {
     setLoading(true);
     try {
       const qUrl = targetDate
-        ? `http://localhost:5000/api/reports/trial-balance?year=${encodeURIComponent(activeYear)}&to_date=${targetDate}`
-        : `http://localhost:5000/api/reports/trial-balance?year=${encodeURIComponent(activeYear)}`;
+        ? `${currentApiBase}/reports/trial-balance?year=${encodeURIComponent(activeYear)}&to_date=${targetDate}`
+        : `${currentApiBase}/reports/trial-balance?year=${encodeURIComponent(activeYear)}`;
       const r = await fetch(qUrl);
       const res = await r.json();
       if (res.success && res.data?.length > 0) {

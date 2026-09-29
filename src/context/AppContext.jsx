@@ -13,6 +13,8 @@ const DEFAULT_YEARS = [
   { id: 5, year_name: '૨૦૨૨-૨૦૨૩', name: '૨૦૨૨-૨૦૨૩', is_current: 0, is_locked: 1 }
 ];
 
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+
 export function AppProvider({ children }) {
   const [societyInfo, setSocietyInfo] = useState({
     name: 'શ્રી ભારૂંડી જૂથ પિયત સહકારી મંડળી લિમિટેડ',
@@ -37,7 +39,7 @@ export function AppProvider({ children }) {
 
   // ડેટાબેઝમાંથી સોસાયટી પ્રોફાઇલ અને સક્રિય વર્ષ/ઋતુ લોડ કરો
   useEffect(() => {
-    fetch('http://localhost:5000/api/masters/company-profile')
+    fetch(`${API_BASE}/masters/company-profile`)
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data) {
@@ -56,7 +58,7 @@ export function AppProvider({ children }) {
       })
       .catch((err) => console.warn('Company profile fetch error:', err));
 
-    fetch('http://localhost:5000/api/masters/years')
+    fetch(`${API_BASE}/masters/years`)
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data?.length > 0) {
@@ -67,7 +69,7 @@ export function AppProvider({ children }) {
       })
       .catch((err) => console.warn('Years fetch error:', err));
 
-    fetch('http://localhost:5000/api/masters/seasons')
+    fetch(`${API_BASE}/masters/seasons`)
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data?.length > 0) {
@@ -177,7 +179,8 @@ export function AppProvider({ children }) {
         login,
         logout,
         showToast,
-        showNotification: showToast
+        showNotification: showToast,
+        apiBase: API_BASE
       }}
     >
       {children}

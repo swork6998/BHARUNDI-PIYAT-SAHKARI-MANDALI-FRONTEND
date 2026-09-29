@@ -44,7 +44,8 @@ const MemberFormPage = () => {
     updateMember,
     fetchVillages,
     fetchCanals,
-    fetchMembers
+    fetchMembers,
+    apiBase
   } = useData();
   const { showNotification, isYearLocked, activeYear } = useApp();
 
@@ -104,7 +105,7 @@ const MemberFormPage = () => {
         });
       } else {
         // Fetch from API directly if not found in state
-        fetch(`http://localhost:5000/api/members/${id}`)
+        fetch(`${apiBase || 'http://localhost:5000/api'}/members/${id}`)
           .then(res => res.json())
           .then(data => {
             if (data.success && data.data) {

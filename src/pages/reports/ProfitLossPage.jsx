@@ -11,7 +11,8 @@ import { formatDate } from '../../utils/dateUtils';
 import { useApp } from '../../context/AppContext';
 
 export default function ProfitLossPage() {
-  const { activeYear, societyInfo } = useApp();
+  const { activeYear, societyInfo, apiBase } = useApp();
+  const currentApiBase = apiBase || 'http://localhost:5000/api';
 
   const [loading, setLoading] = useState(false);
   const [incomes, setIncomes] = useState([]);
@@ -31,7 +32,7 @@ export default function ProfitLossPage() {
       if (fDate) qParams.append('from_date', fDate);
       if (tDate) qParams.append('to_date', tDate);
 
-      const r = await fetch(`http://localhost:5000/api/reports/profit-loss?${qParams.toString()}`);
+      const r = await fetch(`${currentApiBase}/reports/profit-loss?${qParams.toString()}`);
       const res = await r.json();
       if (res.success) {
         setIncomes(res.income || []);

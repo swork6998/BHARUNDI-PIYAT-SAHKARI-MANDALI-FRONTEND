@@ -38,8 +38,9 @@ import { useData } from '../../context/DataContext';
 import { useApp } from '../../context/AppContext';
 
 const FinancialYearPage = () => {
-  const { financialYears, fetchFinancialYears, updateFinancialYear, deleteFinancialYear } = useData();
+  const { financialYears, fetchFinancialYears, updateFinancialYear, deleteFinancialYear, apiBase } = useData();
   const { activeYear, changeYear, showToast, isYearLocked, checkCanModify } = useApp();
+  const currentApiBase = apiBase || 'http://localhost:5000/api';
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -123,7 +124,7 @@ const FinancialYearPage = () => {
           showToast(res?.message || 'વર્ષ સુધારવામાં ભૂલ આવી.', 'error');
         }
       } else {
-        const res = await fetch('http://localhost:5000/api/masters/years', {
+        const res = await fetch(`${currentApiBase}/masters/years`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

@@ -11,7 +11,8 @@ import { useApp } from '../../context/AppContext';
 import { formatDate } from '../../utils/dateUtils';
 
 export default function BalanceSheetPage() {
-  const { activeYear, societyInfo } = useApp();
+  const { activeYear, societyInfo, apiBase } = useApp();
+  const currentApiBase = apiBase || 'http://localhost:5000/api';
 
   const [loading, setLoading] = useState(false);
   const [liabilities, setLiabilities] = useState([]);
@@ -24,7 +25,7 @@ export default function BalanceSheetPage() {
   const fetchBalanceSheet = useCallback((cutoffDate) => {
     setLoading(true);
     const dateParam = cutoffDate !== undefined ? cutoffDate : appliedToDate;
-    let url = `http://localhost:5000/api/reports/balance-sheet?year=${encodeURIComponent(activeYear)}`;
+    let url = `${currentApiBase}/reports/balance-sheet?year=${encodeURIComponent(activeYear)}`;
     if (dateParam) {
       url += `&to_date=${dateParam}`;
     }

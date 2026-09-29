@@ -17,8 +17,9 @@ import PrintSignatures from '../../components/common/PrintSignatures';
 import { useApp } from '../../context/AppContext';
 
 const CompanyProfilePage = () => {
-  const { societyInfo, setSocietyInfo, showToast, showNotification, isYearLocked, canModify } = useApp();
+  const { societyInfo, setSocietyInfo, showToast, showNotification, isYearLocked, canModify, apiBase } = useApp();
   const notify = showToast || showNotification;
+  const currentApiBase = apiBase || 'http://localhost:5000/api';
   const [formData, setFormData] = useState({
     name: societyInfo?.name || '',
     subTitle: societyInfo?.subTitle || societyInfo?.sub_title || '',
@@ -30,7 +31,7 @@ const CompanyProfilePage = () => {
   });
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/masters/company-profile')
+    fetch(`${currentApiBase}/masters/company-profile`)
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data) {
@@ -50,7 +51,7 @@ const CompanyProfilePage = () => {
         }
       })
       .catch((err) => console.warn('Company profile fetch fallback:', err));
-  }, [setSocietyInfo]);
+  }, [setSocietyInfo, currentApiBase]);
 
   const handleSave = async () => {
     if (isYearLocked) {
@@ -67,7 +68,7 @@ const CompanyProfilePage = () => {
       address: formData.address || ''
     };
     try {
-      await fetch('http://localhost:5000/api/masters/company-profile', {
+      await fetch(`${currentApiBase}/masters/company-profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
