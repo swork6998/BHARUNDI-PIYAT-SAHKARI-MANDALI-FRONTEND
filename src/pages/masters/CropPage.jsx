@@ -1,0 +1,332 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  CardContent,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Button,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Box,
+  Alert,
+  Tooltip,
+  Paper,
+  InputAdornment,
+  TablePagination,
+  CircularProgress
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SearchIcon from '@mui/icons-material/Search';
+import GrassIcon from '@mui/icons-material/Grass';
+import LockIcon from '@mui/icons-material/Lock';
+import PageHeader from '../../components/common/PageHeader';
+import PrintSignatures from '../../components/common/PrintSignatures';
+import ConfirmModal from '../../components/common/ConfirmModal';
+import { useData } from '../../context/DataContext';
+import { useApp } from '../../context/AppContext';
+
+const CropPage = () => {
+  const { addCrop, updateCrop, deleteCrop, fetchCrops } = useData();
+  const { showToast, activeYear, isYearLocked, checkCanModify } = useApp();
+
+  const [cropsList, setCropsList] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const [openModal, setOpenModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
+  const [formData, setFormData] = useState({
+    code: '',
+    name: '',
+    category: 'વાર્ષિક પાક',
+    unit: 'વીઘા',
+  });
+
+  const loadCrops = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetchCrops({
+        page: page + 1,
+        limit: rowsPerPage,
+        search: searchTerm
+      });
+      if (res && res.data) {
+        setCropsList(res.data);
+        setTotalCount(res.total || 0);
+      }
+    } catch (e) {
+      console.error('Error fetching crops:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchCrops, page, rowsPerPage, searchTerm]);
+
+  useEffect(() => {
+    loadCrops();
+  }, [loadCrops]);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setPage(0);
+  };
+
+  const handleOpenAdd = () => {
+    if (!checkCanModify('નવો પાક ઉમેરો')) return;
+    setEditingId(null);
+    setFormData({
+      code: `P-0${(totalCount || 0) + 1}`,
+      name: '',
+      category: 'વાર્ષિક પાક',
+      unit: 'વીઘા',
+    });
+    setOpenModal(true);
+  };
+
+  const handleOpenEdit = (crop) => {
+    if (!checkCanModify('પાક સુધારો')) return;
+    setEditingId(crop.id);
+    setFormData({
+      code: crop.code,
+      name: crop.name,
+      category: crop.category,
+      unit: crop.unit,
+    });
+    setOpenModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!checkCanModify('પાક સાચવો')) return;
+    if (!formData.name) {
+      showToast('કૃપા કરીને પાકનું નામ દાખલ કરો.', 'warning');
+      return;
+    }
+
+    try {
+      if (editingId) {
+        const res = await updateCrop(editingId, formData);
+        if (res && res.success) {
+          showToast('પાક વિગત સફળતાપૂર્વક સુધારી લેવાઈ છે!', 'success');
+        } else {
+          showToast(res?.message || 'પાક સુધારવામાં ભૂલ આવી.', 'error');
+        }
+      } else {
+        const res = await addCrop(formData);
+        if (res && res.success) {
+          showToast('નવો પાક સફળતાપૂર્વક ઉમેરાયો!', 'success');
+        } else {
+          showToast(res?.message || 'પાક ઉમેરવામાં ભૂલ આવી.', 'error');
+        }
+      }
+      setOpenModal(false);
+      loadCrops();
+    } catch (e) {
+      showToast('ભૂલ: ' + e.message, 'error');
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!checkCanModify('પાક ડિલીટ')) return;
+    try {
+      const res = await deleteCrop(deleteId);
+      setDeleteId(null);
+      if (res && res.success) {
+        showToast('પાક સફળતાપૂર્વક ડિલીટ કરાયો.', 'success');
+      } else {
+        showToast(res?.message || 'પાક ડિલીટ કરવામાં ભૂલ આવી.', 'error');
+      }
+      loadCrops();
+    } catch (e) {
+      showToast('ભૂલ: ' + e.message, 'error');
+    }
+  };
+
+  return (
+    <Box>
+      <PageHeader
+        title="પાક (ક્રોપ) માસ્ટર"
+        subtitle="સિંચાઈ હેઠળ આવતા તમામ ખેતી પાકોની યાદી અને એકમ"
+        breadcrumb="માસ્ટર / પાક માસ્ટર"
+        icon={<GrassIcon sx={{ fontSize: 28 }} />}
+        actions={
+          <Tooltip title={isYearLocked ? "પાછલું વર્ષ લૉક હોવાથી નવો પાક ઉમેરી શકાશે નહીં" : ""}>
+            <span>
+              <Button
+                variant="contained"
+                color="primary"
+                disabled={isYearLocked}
+                startIcon={<AddIcon />}
+                onClick={handleOpenAdd}
+              >
+                નવો પાક ઉમેરો
+              </Button>
+            </span>
+          </Tooltip>
+        }
+      />
+
+      {isYearLocked && (
+        <Alert severity="warning" icon={<LockIcon />} sx={{ mb: 2.5 }}>
+          <b>પાછલું વર્ષ લૉક છે ({activeYear}):</b> ફક્ત વાંચવા (Read) અને પ્રિન્ટ (Print) ની પરવાનગી છે. પાક માસ્ટરમાં ફેરફાર શક્ય નથી.
+        </Alert>
+      )}
+
+      <Paper sx={{ p: 2, mb: 3 }} className="no-print">
+        <TextField
+          placeholder="પાકનું નામ, કોડ, કેટેગરી અથવા એકમ શોધો..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          size="small"
+          fullWidth
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            )
+          }}
+        />
+      </Paper>
+
+      <Card sx={{ mb: 3 }}>
+        <CardContent sx={{ p: 0 }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>પાક કોડ</TableCell>
+                <TableCell>પાકનું નામ</TableCell>
+                <TableCell>પ્રકાર (Category)</TableCell>
+                <TableCell>આકારણી એકમ</TableCell>
+                <TableCell align="center" className="no-print">ક્રિયા</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                    <CircularProgress size={32} />
+                  </TableCell>
+                </TableRow>
+              ) : cropsList.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                    કોઈ પાક મળ્યો નથી.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                cropsList.map((crop) => (
+                  <TableRow key={crop.id}>
+                    <TableCell sx={{ fontWeight: 700 }}>{crop.code}</TableCell>
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.95rem' }}>{crop.name}</TableCell>
+                    <TableCell>{crop.category}</TableCell>
+                    <TableCell>{crop.unit}</TableCell>
+                    <TableCell align="center" className="no-print">
+                      <Tooltip title={isYearLocked ? "લૉક વર્ષમાં સુધારો અમાન્ય છે" : "સુધારો કરો"}>
+                        <span>
+                          <IconButton size="small" color="primary" disabled={isYearLocked} onClick={() => handleOpenEdit(crop)}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title={isYearLocked ? "લૉક વર્ષમાં કાઢી નાખવું અમાન્ય છે" : "કાઢી નાખો"}>
+                        <span>
+                          <IconButton size="small" color="error" disabled={isYearLocked} onClick={() => setDeleteId(crop.id)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+
+        <TablePagination
+          component="div"
+          count={totalCount}
+          page={page}
+          onPageChange={(e, newPage) => setPage(newPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          labelRowsPerPage="પ્રતિ પેજ પાકો:"
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} / કુલ: ${count !== -1 ? count : 'વધુ'}`}
+          className="no-print"
+        />
+      </Card>
+
+      {/* સત્તાવાર પ્રિન્ટ સહીઓ */}
+      <PrintSignatures />
+
+      {/* મોડલ ફોર્મ */}
+      <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: '#00695C' }}>
+          {editingId ? 'પાક વિગત સુધારો' : 'નવો પાક ઉમેરો'}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <TextField
+            label="પાક કોડ"
+            fullWidth
+            value={formData.code}
+            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+          />
+          <TextField
+            label="પાકનું નામ (ગુજરાતીમાં)"
+            fullWidth
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            autoFocus
+          />
+          <TextField
+            label="પાકનો પ્રકાર"
+            fullWidth
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+          />
+          <TextField
+            label="આકારણી એકમ"
+            fullWidth
+            value={formData.unit}
+            onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenModal(false)} color="inherit">
+            રદ કરો
+          </Button>
+          <Button onClick={handleSave} variant="contained" color="primary">
+            સાચવો (Save)
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ડિલીટ ખાતરી મોડલ */}
+      <ConfirmModal
+        open={Boolean(deleteId)}
+        title="પાક ડિલીટ કરવાની ખાતરી"
+        message="શું તમે ખરેખર આ પાકને માસ્ટરમાંથી દૂર કરવા માંગો છો?"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
+    </Box>
+  );
+};
+
+export default CropPage;
